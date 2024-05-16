@@ -313,6 +313,7 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
     grad_select = np.array([]).astype(bool)
     for sp in range(len(splitting)-1):
         
+        start = time.perf_counter()
         if splitting[sp+1] == -1:
             sp_freq       = freq[splitting[sp]:]
             sp_data       = np.array(fg_spec)[splitting[sp]:]
@@ -321,11 +322,18 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
             sp_freq       = freq[splitting[sp]:splitting[sp+1]]
             sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
             sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
-
+        end = time.perf_counter()
+        print(f"cleanup_spec_mask : {end - start:0.4f} seconds")
+        start = time.perf_counter()
         grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],\
                                            usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
                                            smooth_bound_kernel=smooth_bound_kernel[sp])
+        end = time.perf_counter()
+        print(f"flag_smoothing : {end - start:0.4f} seconds")
+        start = time.perf_counter()
         grad_select = np.append(grad_select,grad_selectsp)
+        end = time.perf_counter()
+        print(f"append : {end - start:0.4f} seconds")
 
     # clean up based on some pattern 
     #
@@ -403,6 +411,7 @@ def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,usedb
     info_fg   = []
     info_fg_k = []
 
+    print("In flag_smoothing: len(kernel) = ", len(kernel))
     for k in kernel:
         
         grad_select_org = grad_select
@@ -410,15 +419,20 @@ def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,usedb
         # smooth the original spectrum and subtract it from the
         # original dataset
         #
+        start = time.perf_counter()
         sm_data   = convolve_1d_data(spec,smooth_type=smooth_type,smooth_kernel=k)
+        end = time.perf_counter()
+        print(f"In flag_smoothing: convolve_1d_data : {end - start:0.4f} seconds")
         resi_data = spec - sm_data
 
         # generate a flag based on the boundary region
         #
+        start = time.perf_counter()
         grad_select,boundary_up,boundary_low = boundary_range(freq,resi_data,usedbinning,np.invert(grad_select),\
                                                                   bound_sigma=bound_sigma,stats_type=stats_type,\
                                                                   smooth_kernel=smooth_bound_kernel)
-
+        end = time.perf_counter()
+        print(f"In flag_smoothing: boundary_range : {end - start:0.4f} seconds")
         # and combine with the previous                                                          
         grad_select = np.logical_or(grad_select,grad_select_org)
 

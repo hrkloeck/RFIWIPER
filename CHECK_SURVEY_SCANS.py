@@ -185,7 +185,6 @@ def main():
                     # go through all the time stamps
                     #
                     for s in range(spectrum_data.shape[0]):
-
                         fg_spec            = spectrum_data[s,1:] # exclude the DC term
                         cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
                         fg_t               = process_time()

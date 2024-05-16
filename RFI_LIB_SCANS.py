@@ -17,6 +17,7 @@ import numpy.ma as ma
 from copy import deepcopy
 from scipy.signal import convolve2d
 from scipy import stats
+import time
 
 def data_stats(data,stats_type='mean',accur=100):
     """
@@ -306,7 +307,7 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
     """
     specially for doing single azimuthe scans
     """
-
+    
     # do the smooth flagging
     #
     grad_select = np.array([]).astype(bool)
@@ -321,13 +322,10 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
             sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
             sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
 
-
         grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],\
                                            usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
                                            smooth_bound_kernel=smooth_bound_kernel[sp])
-
         grad_select = np.append(grad_select,grad_selectsp)
-
 
     # clean up based on some pattern 
     #
@@ -339,8 +337,11 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
                       [True,False,False,False,False,False,True],
                       [False,False,False,True,False,False,False]\
                       ]
-
+    start = time.perf_counter()
+    # --> BOTTLENECK
     final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
+    end = time.perf_counter()
+    print(f"Time for clean_up_1d_mask : {end - start:0.4f} seconds")
 
     if mtque != None:
         resultdic =  {}
@@ -433,12 +434,29 @@ def clean_up_1d_mask(mask,bins=[[True,False,True]],setvalue=True):
     inputmask = deepcopy(mask)
 
     for k in range(len(bins)):
-        for i in range(len(inputmask)-len(bins[k])):
-                isequal = inputmask[i:i+len(bins[k])] == bins[k]
+        # # original 
+        # for i in range(len(inputmask)-len(bins[k])):
+        #         isequal = inputmask[i:i+len(bins[k])] == bins[k]
                         
-                if np.cumsum(isequal.astype(int))[-1] == len(bins[k]):
-                    inputmask[i:i+len(bins[k])-1] = setvalue
+        #         if np.cumsum(isequal.astype(int))[-1] == len(bins[k]):
+        #             inputmask[i:i+len(bins[k])-1] = setvalue
+        
 
+        # --> vectorized search and smaller loops (140x speedup):
+        # create a 2D version of inputmask with `len(inputmask)-len(bins[k])` rows and `len(bins[k])` columns
+        # Example: if inputmask were [0, 1, 2, 3, 4, 5], and len(bins[k]) = 3, then
+        # inputmask_2d = [[0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4, 5]]
+        inputmask_2d = np.zeros((len(inputmask)-len(bins[k]), len(bins[k])), dtype=bool)
+        for j in range(len(bins[k])):
+            inputmask_2d[:, j] = inputmask[j:len(inputmask)-len(bins[k])+j]
+        # find the rows where all elements are equal to the elements in bins[k]            
+        isequal_2d = np.where((inputmask_2d == bins[k]).sum(axis=1) == len(bins[k]))
+        # set the values in original inputmask to setvalue
+        for i in isequal_2d[0]:
+            inputmask[i:i+len(bins[k])-1] = setvalue
+        # free up memory            
+        del inputmask_2d
+        
     return inputmask
 
 

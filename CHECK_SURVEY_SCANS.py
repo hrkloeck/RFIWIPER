@@ -153,7 +153,7 @@ def main():
                             jobs       = []
                             result_dic = {}
                             for cps in range(ncpus):
-                                if idx <= t_steps:
+                                if idx < t_steps:
                                     mmque.append(multiprocessing.Queue())
                                     if toutput:
                                         print('Fan out jobs use ',ncpus,' CPU: ',idx,' ')

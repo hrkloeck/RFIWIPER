@@ -135,7 +135,7 @@ def main():
                 if toutput:
                     print('\tgenerate flags for : ',d.replace('timestamp',''),'\n')
 
-                spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum'] 
+                spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
                 new_mask        = np.zeros(spectrum_data.shape).astype(bool)
                 new_mask[:,0]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
 
@@ -145,7 +145,7 @@ def main():
                         #
                         t_steps = spectrum_data.shape[0]
                         idx     = 0
-                        step    = int(np.ceil(t_steps / ncpus + 1))
+                        step    = int(t_steps / ncpus) + 1
                         #
                         for i in range(step):
                             idxq       = 0
@@ -160,7 +160,7 @@ def main():
                                     fg_spec            = spectrum_data[idx,1:]      # exclude the DC term
                                     cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
                                     jo = multiprocessing.Process(target=RFIL.flag_spec_by_smoothing, args=(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,\
-                                                                             smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,mmque[idxq],idxq))
+                                                                             smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,idx,mmque[idxq],idxq))
                                     jobs.append(jo)
                                     jo.start()
                                     idxq += 1
@@ -178,7 +178,7 @@ def main():
                             # get the results into a final mask
                             rs = result_dic.keys()
                             for k in result_dic:
-                                    new_mask[int(k)][1:] = result_dic[k][0]
+                                    new_mask[result_dic[k][0]][1:] = result_dic[k][1]
 
                 else:
 
@@ -265,18 +265,9 @@ def main():
             spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:] 
             freq           = obsfile[d.replace('timestamp','frequency')][:]
 
-
-            print(final_mask[d.replace('timestamp','')].shape)
-            print(full_new_mask[d.replace('timestamp','')].shape)
-
-
-            print(spectrum_data.shape)
-            
-            sys.exit(-1)
-
-            fullmask_data = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
-            spectrum_mean      = fullmask_data.mean(axis=0)
-            spectrum_std      = fullmask_data.std(axis=0)
+            fullmask_data  = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
+            spectrum_mean  = fullmask_data.mean(axis=0)
+            spectrum_std   = fullmask_data.std(axis=0)
 
 
             # print the spectrum
@@ -315,7 +306,6 @@ def main():
                 print('\tgenerate plot for : ',d.replace('timestamp',''))
 
             spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:] 
-
 
             # print the waterfall plot
             #

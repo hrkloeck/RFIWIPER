@@ -135,10 +135,10 @@ def main():
                 if toutput:
                     print('\tgenerate flags for : ',d.replace('timestamp',''),'\n')
 
-                spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum'][1:] # exclude the DC term
+                spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum'] 
                 new_mask        = np.zeros(spectrum_data.shape).astype(bool)
-                new_mask[:,0]   = True             # exclude the DC term of the FFT spectrum
-            
+                new_mask[:,0]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
+
 
                 if ncpus > 1:
                         # Setting runs on mutiple cpu 
@@ -153,11 +153,11 @@ def main():
                             jobs       = []
                             result_dic = {}
                             for cps in range(ncpus):
-                                if idx < t_steps:
+                                if idx <= t_steps:
                                     mmque.append(multiprocessing.Queue())
                                     if toutput:
                                         print('Fan out jobs use ',ncpus,' CPU: ',idx,' ')
-                                    fg_spec            = spectrum_data[idx,1:] # exclude the DC term
+                                    fg_spec            = spectrum_data[idx,1:]      # exclude the DC term
                                     cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
                                     jo = multiprocessing.Process(target=RFIL.flag_spec_by_smoothing, args=(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,\
                                                                              smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,mmque[idxq],idxq))
@@ -185,6 +185,7 @@ def main():
                     # go through all the time stamps
                     #
                     for s in range(spectrum_data.shape[0]):
+
                         fg_spec            = spectrum_data[s,1:] # exclude the DC term
                         cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
                         fg_t               = process_time()
@@ -264,6 +265,15 @@ def main():
 
             spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:] 
             freq           = obsfile[d.replace('timestamp','frequency')][:]
+
+
+            print(final_mask[d.replace('timestamp','')].shape)
+            print(full_new_mask[d.replace('timestamp','')].shape)
+
+
+            print(spectrum_data.shape)
+            
+            sys.exit(-1)
 
             fullmask_data = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
             spectrum_mean      = fullmask_data.mean(axis=0)

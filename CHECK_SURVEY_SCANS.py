@@ -266,15 +266,6 @@ def main():
             spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:] 
             freq           = obsfile[d.replace('timestamp','frequency')][:]
 
-
-            print(final_mask[d.replace('timestamp','')].shape)
-            print(full_new_mask[d.replace('timestamp','')].shape)
-
-
-            print(spectrum_data.shape)
-            
-            sys.exit(-1)
-
             fullmask_data = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
             spectrum_mean      = fullmask_data.mean(axis=0)
             spectrum_std      = fullmask_data.std(axis=0)

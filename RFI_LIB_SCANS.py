@@ -21,7 +21,7 @@ import time
 
 def data_stats(data,stats_type='mean',accur=100):
     """
-    return mean and derivation of the input data
+    return mean and deviation of the input data
     """
 
     if stats_type == 'madmadmedian':
@@ -50,7 +50,7 @@ def data_stats(data,stats_type='mean',accur=100):
         data_std       = np.std(data)
 
     elif stats_type == 'kdemean':
-        data_mean,data_std = kdemean(data,accucary=1000)
+        data_mean,data_std = kdemean(data,accuracy=1000)
 
     elif stats_type == 'plothist':
         #
@@ -78,6 +78,94 @@ def data_stats(data,stats_type='mean',accur=100):
 
 
     return data_mean, data_std, stats_type
+
+def data_stats_vect(data,padded_elements, stats_type='mean',accur=100):
+    """
+    vectorized calculation of mean and deviation over the binned data
+
+    Parameters
+    ----------
+    data : np.ndarray
+        input data, shape (n, m) with n = number of bins, m = number of channels per bin
+    """
+    if data.ndim == 1:
+        raise ValueError("Input data must be 2D, (bins, channels)")
+
+    if stats_type == 'madmadmedian':
+        #
+        from astropy.stats import mad_std, median_absolute_deviation
+        #
+        data_mean      = median_absolute_deviation(data, axis=1)
+        data_std       = mad_std(data, axis=1)
+        # last element affected by padding, correct
+        data_mean[-1] = median_absolute_deviation(data[-1, :-padded_elements])
+        data_std[-1] = mad_std(data[-1, :-padded_elements])
+
+    elif stats_type == 'madmean':
+        #
+        from astropy.stats import mad_std
+        #
+        data_mean      = np.mean(data, axis=1) 
+        data_std       = mad_std(data, axis=1)
+        # last element affected by padding, correct
+        data_mean[-1] = np.mean(data[-1, :-padded_elements])
+        data_std[-1] = mad_std(data[-1, :-padded_elements])
+
+    elif stats_type == 'madmedian':
+        #
+        from astropy.stats import mad_std
+        #
+        data_mean      = np.median(data, axis=1) 
+        data_std       = mad_std(data, axis=1)
+        # last element affected by padding, correct
+        data_mean[-1] = np.median(data[-1, :-padded_elements])
+        data_std[-1] = mad_std(data[-1, :-padded_elements])
+
+    elif stats_type == 'median':
+        data_mean      = np.median(data, axis=1)
+        data_std       = np.std(data, axis=1)
+        # last element affected by padding, correct
+        data_mean[-1] = np.median(data[-1, :-padded_elements])
+        data_std[-1] = np.std(data[-1, :-padded_elements])
+
+    elif stats_type == 'kdemean':
+        raise NotImplementedError("Vectorized Kernel Density Estimation mean not implemented yet")
+        #data_mean,data_std = kdemean(data,accuracy=1000)
+
+    elif stats_type == 'plothist':
+        #
+        import matplotlib.pyplot as plt
+        #
+        # Just as a tool to help debugging
+        #
+        sigma  = 3
+        data_mean = np.mean(data, axis=1)
+        data_std = np.std(data, axis=1)
+        # last element affected by padding, correct
+        data_mean[-1] = np.mean(data[-1, :-padded_elements])
+        data_std[-1] = np.std(data[-1, :-padded_elements])
+        cuts1  = data_mean - sigma * data_std
+        cuts2  = data_mean + sigma * data_std
+
+        print('%e'%cuts1,'--','%e'%cuts2)
+        
+        fig, ax = plt.subplots()
+        yvalues,bins,patch = ax.hist(data.flatten(),density=True,bins=accur)
+        plt.plot([cuts1,cuts1],[min(yvalues),max(yvalues)],'-,','b')
+        plt.plot([cuts2,cuts2],[min(yvalues),max(yvalues)],'-,','b')
+        plt.show()
+        #
+        sys.exit(-1)
+
+    else:
+        data_mean      = np.mean(data, axis=1)
+        data_std       = np.std(data, axis=1)
+        # last element affected by padding, correct
+        data_mean[-1] = np.mean(data[-1, :-padded_elements])
+        data_std[-1] = np.std(data[-1, :-padded_elements])        
+
+    return data_mean, data_std, stats_type
+
 
 
 
@@ -158,7 +246,7 @@ def smooth_kernels(smk_type):
 
 
 
-def kdemean(x,accucary=1000):
+def kdemean(x,accuracy=1000):
     """
      use the Kernel Density Estimation (KDE) to determine the mean
     
@@ -177,7 +265,7 @@ def kdemean(x,accucary=1000):
     # create instance of gaussian_kde class
     gk     = gaussian_kde(x)
 
-    vra    = linspace(-1*max_range,max_range,accucary)
+    vra    = linspace(-1*max_range,max_range,accuracy)
     vraval = gk.evaluate(vra)
 
     # get the maximum
@@ -192,7 +280,7 @@ def kdemean(x,accucary=1000):
 
     idx_half_power = list(difit).index(min(difit[sel]))
 
-    if idx_half_power >= accucary -1:
+    if idx_half_power >= accuracy -1:
         return(mean(x),std(x))
 
     delta_accuracy = max([abs(vra[idx_half_power-1] - vra[idx_half_power]),\
@@ -221,24 +309,31 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
     # To get the upper and lower boundaries we used binned data and its statistics
     # 
+    # --> BOTTLENECK
+    #start = time.perf_counter()
+    # print("In boundary_range: usedbinning, stats_type = ", usedbinning, stats_type)
+    # print("In boundary_range: len(xdata), len(ydata) = ", len(xdata), len(ydata), type(xdata), type(ydata))
     stats_x_data,stats_x_datastd  = checkerstats(xdata,usedbinning,stats_type)
     stats_y_data,stats_y_datastd,stats_mask  = checkerstats_sel(ydata,usedbinning,ydata_mask,stats_type)
-
+    #end = time.perf_counter()
+#    print(f"checkerstats : {end - start:0.7f} seconds")
 
     # determine the boundary region 
     #
     # x range
     #
-    x_boundary_values = []
-    x_boundary_values.append(xdata[0])
-    for d in range(len(stats_x_data)):
-        x_boundary_values.append(stats_x_data[d])
-    x_boundary_values.append(xdata[-1])
-
+    #start = time.perf_counter()
+    x_boundary_values = np.zeros((len(stats_x_data)+2,), dtype = np.array(stats_x_data).dtype)
+    x_boundary_values[0] = xdata[0]
+    x_boundary_values[-1] = xdata[-1]
+    x_boundary_values[1:-1] = stats_x_data
+    #end = time.perf_counter()
+    #print(f"Time for x_boundary_values : {end - start:0.7f} seconds")
 
     # y range 
     #
     #
+    #start = time.perf_counter()
     y_boundary_values_up  = []
     y_boundary_values_low = []
     #
@@ -249,14 +344,18 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
         y_boundary_values_low.append(stats_y_data[d] - bound_sigma * stats_y_datastd[d])
     y_boundary_values_up.append(stats_y_data[-1] + bound_sigma * stats_y_datastd[-1])
     y_boundary_values_low.append(stats_y_data[-1] - bound_sigma * stats_y_datastd[-1])
-
+    #end = time.perf_counter()
+    #print(f"Time for y_boundary_values_up, y_boundary_values_low : {end - start:0.7f} seconds")
 
     # Here check on the boundary 
     # 
+    #start = time.perf_counter()
     boundary_stats_up   = data_stats(y_boundary_values_up,stats_type='median',accur=100)
     boundary_stats_low  = data_stats(y_boundary_values_low,stats_type='median',accur=100)
-
+    #end = time.perf_counter()
+    #print(f"Time for data_stats : {end - start:0.7f} seconds")
     #
+    #start = time.perf_counter()
     if usedbinning > 10:
 
         if boundary_stats_up[0] != boundary_stats_up[1]:
@@ -268,32 +367,40 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
         
     else:
             bound_select         = np.zeros(len(y_boundary_values_low)).astype(bool)
-
+    #end = time.perf_counter()
+    #print(f"Time for bound_select : {end - start:0.7f} seconds")
 
     # in case there are faulty values in
     # checkerstats_selcheckerstats_sel function
     # these has been marked
     #
+    #start = time.perf_counter()
     if max(stats_mask) > 0:
         stats_mask    = stats_mask.astype(bool)
         stats_mask    = np.insert(stats_mask,0,bound_select[0])
         stats_mask    = np.insert(stats_mask,len(stats_mask),bound_select[-1])
         bound_select  = np.logical_or(bound_select,stats_mask.astype(bool))
-
+    #end = time.perf_counter()
+    #print(f"Time for stats_mask : {end - start:0.7f} seconds")
     
     # Interpolate and convolve the boundary region 
     # of the data and use this to mark bad data
     #
+    #start = time.perf_counter()
     interp_boundary_up         = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],np.array(y_boundary_values_up)[np.invert(bound_select)])
     interp_boundary_low        = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],np.array(y_boundary_values_low)[np.invert(bound_select)])
+    #end = time.perf_counter()
+    #print(f"Time for interp_boundary_up, interp_boundary_low : {end - start:0.7f} seconds")
     #
+    #start = time.perf_counter()
     if smooth_kernel > 3:
         boundary_up                = convolve_1d_data(interp_boundary_up,smooth_type='wiener',smooth_kernel=smooth_kernel)
         boundary_low               = convolve_1d_data(interp_boundary_low,smooth_type='wiener',smooth_kernel=smooth_kernel)
     else:
         boundary_up  = interp_boundary_up
         boundary_low = interp_boundary_low
-
+    #end = time.perf_counter()
+    #print(f"Time for boundary_up, boundary_low : {end - start:0.7f} seconds")
     # select on the boundary data
     #
     grad_select         = np.logical_or(ydata >= boundary_up,ydata <= boundary_low)  # True for bad data
@@ -303,7 +410,7 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
 
 
-def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,idx,mtque=None,njobs=1):
+def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,mtque=None,njobs=1):
     """
     specially for doing single azimuthe scans
     """
@@ -313,7 +420,7 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
     grad_select = np.array([]).astype(bool)
     for sp in range(len(splitting)-1):
         
-        start = time.perf_counter()
+        #start = time.perf_counter()
         if splitting[sp+1] == -1:
             sp_freq       = freq[splitting[sp]:]
             sp_data       = np.array(fg_spec)[splitting[sp]:]
@@ -322,18 +429,19 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
             sp_freq       = freq[splitting[sp]:splitting[sp+1]]
             sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
             sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
-        end = time.perf_counter()
-        print(f"cleanup_spec_mask : {end - start:0.4f} seconds")
-        start = time.perf_counter()
+        #end = time.perf_counter()
+        #print(f"cleanup_spec_mask : {end - start:0.7f} seconds")
+        #print("len(sp_freq), type(sp_freq) = ", len(sp_freq), type(sp_freq))
+        #start = time.perf_counter()
         grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],\
                                            usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
                                            smooth_bound_kernel=smooth_bound_kernel[sp])
-        end = time.perf_counter()
-        print(f"flag_smoothing : {end - start:0.4f} seconds")
-        start = time.perf_counter()
+        #end = time.perf_counter()
+        #print(f"flag_smoothing : {end - start:0.7f} seconds")
+        #start = time.perf_counter()
         grad_select = np.append(grad_select,grad_selectsp)
-        end = time.perf_counter()
-        print(f"append : {end - start:0.4f} seconds")
+        #end = time.perf_counter()
+        #print(f"append : {end - start:0.7f} seconds")
 
     # clean up based on some pattern 
     #
@@ -345,11 +453,11 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
                       [True,False,False,False,False,False,True],
                       [False,False,False,True,False,False,False]\
                       ]
-    start = time.perf_counter()
+    #start = time.perf_counter()
     # --> BOTTLENECK
     final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
-    end = time.perf_counter()
-    print(f"Time for clean_up_1d_mask : {end - start:0.4f} seconds")
+    #end = time.perf_counter()
+    #print(f"Time for clean_up_1d_mask : {end - start:0.7f} seconds")
 
     if mtque != None:
         resultdic =  {}
@@ -411,7 +519,8 @@ def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,usedb
     info_fg   = []
     info_fg_k = []
 
-    print("In flag_smoothing: len(kernel) = ", len(kernel))
+#    print("In flag_smoothing: len(kernel) = ", len(kernel), type(kernel))
+#    print("In flag_smoothing: kernel = ", kernel)
     for k in kernel:
         
         grad_select_org = grad_select
@@ -419,23 +528,22 @@ def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,usedb
         # smooth the original spectrum and subtract it from the
         # original dataset
         #
-        start = time.perf_counter()
+        #start = time.perf_counter()
         sm_data   = convolve_1d_data(spec,smooth_type=smooth_type,smooth_kernel=k)
-        end = time.perf_counter()
-        print(f"In flag_smoothing: convolve_1d_data : {end - start:0.4f} seconds")
+        #end = time.perf_counter()
+        #print(f"In flag_smoothing: convolve_1d_data : {end - start:0.7f} seconds")
         resi_data = spec - sm_data
 
         # generate a flag based on the boundary region
         #
-        start = time.perf_counter()
+        #start = time.perf_counter()
         grad_select,boundary_up,boundary_low = boundary_range(freq,resi_data,usedbinning,np.invert(grad_select),\
                                                                   bound_sigma=bound_sigma,stats_type=stats_type,\
                                                                   smooth_kernel=smooth_bound_kernel)
-        end = time.perf_counter()
-        print(f"In flag_smoothing: boundary_range : {end - start:0.4f} seconds")
+        #end = time.perf_counter()
+        #print(f"In flag_smoothing: boundary_range : {end - start:0.7f} seconds")
         # and combine with the previous                                                          
         grad_select = np.logical_or(grad_select,grad_select_org)
-
 
     return grad_select
 
@@ -476,18 +584,34 @@ def clean_up_1d_mask(mask,bins=[[True,False,True]],setvalue=True):
 
 
 def checkerstats(data,split,stats_type):
+    """
+    Calculate the statistics of the data on `split` number of subarrays
+    """
+    # benchmarking
 
-    sp_data = np.array_split(data,split)
+    # # original implementation
+    # sp_data = np.array_split(data,split)
 
-    statsmean = []
-    statsstd  = []
+    # statsmean = []
+    # statsstd  = []
+    # for i, sp in enumerate(sp_data):
+    #     stdata = data_stats(sp,stats_type,accur=100)
+    #     statsmean.append(stdata[0])
+    #     statsstd.append(stdata[1])
+    
+    # vectorized implementation
+    # pad data with zeros to make sure it is divisible by split
+    # store number of padded zeros to remove them at the end
+    padded_elements = split - len(data) % split
+    data = np.pad(data, (0, padded_elements), mode='constant', constant_values=(0, 0))
+    # reshape data to a 2D array, each row is a bin
+    data = data.reshape((split, -1))
+    # calculate statistics
+    statsmean, statsstd, _ = data_stats_vect(data, padded_elements, stats_type, accur=100)
+    # reshape data back to 1D array and remove padded zeros
+    data = data.flatten()[:-padded_elements]
 
-    for sp in sp_data:
-        stdata = data_stats(sp,stats_type,accur=100)
-        statsmean.append(stdata[0])
-        statsstd.append(stdata[1])
-
-    return statsmean,statsstd
+    return statsmean, statsstd
 
 def checkerstats_sel(data,split,select,stats_type):
     """

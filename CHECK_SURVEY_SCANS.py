@@ -129,7 +129,7 @@ def main():
         for d in timestamp_keys:
             time_data      = obsfile[d][:]
             freq           = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
-
+            print("PROFILING: freq.shape", freq.shape)
             if d.count('ND0') > 0:
 
                 if toutput:

@@ -408,19 +408,47 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
     return grad_select,boundary_up,boundary_low
 
-
-
 def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,idx=0,mtque=None,njobs=1):
     """
     specially for doing single azimuthe scans
+
+    Parameters
+    ----------
+    fg_spec : np.ndarray
+        1D array of the spectrum to be cleaned
+    freq : np.ndarray
+        1D array of the frequencies (TODO: IS THIS ALWAYS THE SAME FOR EVERY FG_SPEC?)
+    cleanup_spec_mask : np.ndarray
+        1D array of the mask for the spectrum
+    splitting : list
+        list of indices to split the spectrum into subarrays
+    kernel_sizes : list
+        list of kernel sizes for smoothing
+    smooth_type : list
+        list of smoothing types
+    usedbinning : list
+        list of binning sizes
+    bound_sigma : list
+        list of sigma values for boundary range
+    stats_type : list
+        list of statistics types
+    smooth_bound_kernel : list
+        list of kernel sizes for boundary smoothing
+    idx : int
+        index of the spectrum
+    mtque : multiprocessing.Queue
+        queue for multiprocessing
+    njobs : int
+        number of jobs for multiprocessing
     """
     
     # do the smooth flagging
     #
     grad_select = np.array([]).astype(bool)
+#    print("In flag_spec_by_smoothing: splitting = ", splitting)
     for sp in range(len(splitting)-1):
-        
-        #start = time.perf_counter()
+        # split the data and relative frequencies into subarrays 
+        # e.g. 1: first 6000 channels, 2: the rest
         if splitting[sp+1] == -1:
             sp_freq       = freq[splitting[sp]:]
             sp_data       = np.array(fg_spec)[splitting[sp]:]
@@ -429,19 +457,12 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
             sp_freq       = freq[splitting[sp]:splitting[sp+1]]
             sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
             sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
-        #end = time.perf_counter()
-        #print(f"cleanup_spec_mask : {end - start:0.7f} seconds")
-        #print("len(sp_freq), type(sp_freq) = ", len(sp_freq), type(sp_freq))
-        #start = time.perf_counter()
+        #print("In flag_spec_by_smoothing: sp, smooth_type, kernel_sizes, usedbinning, bound_sigma, stats_type, smooth_bound_kernel = ", sp, smooth_type[sp], kernel_sizes[sp], usedbinning[sp], bound_sigma[sp], stats_type[sp], smooth_bound_kernel[sp])
+        # kernel_sizes and usedbinning vary with the subarray, rest is the same
         grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],\
                                            usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
                                            smooth_bound_kernel=smooth_bound_kernel[sp])
-        #end = time.perf_counter()
-        #print(f"flag_smoothing : {end - start:0.7f} seconds")
-        #start = time.perf_counter()
         grad_select = np.append(grad_select,grad_selectsp)
-        #end = time.perf_counter()
-        #print(f"append : {end - start:0.7f} seconds")
 
     # clean up based on some pattern 
     #
@@ -453,11 +474,7 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
                       [True,False,False,False,False,False,True],
                       [False,False,False,True,False,False,False]\
                       ]
-    #start = time.perf_counter()
-    # --> BOTTLENECK
     final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
-    #end = time.perf_counter()
-    #print(f"Time for clean_up_1d_mask : {end - start:0.7f} seconds")
 
     if mtque != None:
         resultdic =  {}
@@ -466,6 +483,11 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
 
     return final_sp_mask
 
+def flag_spec_by_smoothing_vect(data,freq,mask,splitting,kernel_sizes,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel):
+    """
+    vectorized version of flag_spec_by_smoothing, operates on the whole dataset
+    """
+    pass
 
 def convolve_1d_data(data,smooth_type='hanning',smooth_kernel=3):
     """
@@ -486,6 +508,8 @@ def convolve_1d_data(data,smooth_type='hanning',smooth_kernel=3):
          sm_data = medfilt(data,smooth_kernel)
 
     elif smooth_type == 'wiener':
+#         print("In convolve_1d_data: smooth_kernel = ", smooth_kernel)
+         # TODO: implement vectorized version of wiener in Heat
          sm_data = wiener(data,smooth_kernel)
 
     else:

@@ -19,6 +19,7 @@ import numpy.ma as ma
 from functools import reduce
 
 
+
 def h5printstructure(item, leading = ''):
     """
     print the structure of the hdf5 file
@@ -713,6 +714,7 @@ def obs_direction(obsfile,key,accur=1000):
     otf_t     = [np.abs(ra_bvalues[np.argmax(ra_bins)]),np.abs(dec_bvalues[np.argmax(dec_bins)])]
     
     return tocheck[np.argmax(otf_t)]
+
 
 
 def fov_fwhm(obsfreq,diameter,type='fov',outunit='deg'):

@@ -513,3 +513,14 @@ def difference_mask(mask,orgmask):
 
     return new_mask
     
+
+def str_in_strlist(string,strlist):
+    """
+    """
+    isthere = False
+    for k in strlist:
+        if string.count(k) > 0:
+            isthere = True 
+            break
+    return isthere
+    

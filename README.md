@@ -8,4 +8,82 @@ The first test dataset is EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 and is av
 
  more to come in the future.
 
- The basic task is to speed up the thing!
+
+```
+python CHECK_SURVEY_SCANS.py
+Usage: CHECK_SURVEY_SCANS.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  --DATA_FILE=DATAFILE  DATA - HDF5 file of the Prototyp
+  --USEDATA=USEDATA     use data noise diode off and on "['ND0','ND1']",
+                        default is ['ND0']
+  --DONOTFLAG           Do not flag the data.
+  --DO_FG_TIME_BY_HAND_=HAND_TIME_FG
+                        use the time index of the waterfall plot e.g.
+                        [[0,10],[100,110]]
+  --DOPLOT_FINAL_SPEC   Plot the final spectrum after Flagging
+  --FINAL_SPEC_YRANGE=FSPEC_YRANGE
+                        [ymin,ymax]
+  --DOPLOT_FINAL_WATERFALL
+                        Plot the final waterfall after Flagging
+  --DOSAVEPLOT          Save the plots as figures
+  --EDIT_FLAG           Switch to replace the old with the new mask
+  --RESET_FLAG          Switch to clear all mask
+  --DOSAVEMASK=SAVEMASK
+                        Save the mask into numpy npz file.
+  --DOLOADMASK=LOADMASK
+                        Upload the mask.
+  --DONOTCPUS           Switch off using multiple CPUs on the maschine
+  --USENCPUS=USENCPUS   Define the number of CPUs to use
+  --SILENCE             Switch off all output
+  --HELP                Show info on input
+
+
+```
+
+
+
+## Lets have a go on the file
+
+- Just look at the original dataset without flagging
+
+```
+python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOSAVEPLOT
+```
+
+Waterfall Spectrum per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT.png" width=25%>
+
+Averaged Spectrum (mean) and the standart derivation as error's in red per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC.png" width=25%>
+
+
+- Just flag by hand some times
+
+```
+python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOPLOT_FINAL_WATERFALL --DO_FG_TIME_BY_HAND='[[0,40],[1695,1750],[3405,3455],[5114,5162],[6820,6875]]' --DOSAVEPLOT
+```
+
+This also provides some output e.g. for the first entry of the --DO_FG_TIME_BY_HAND settings
+
+	- Hand FG in time
+                 idx:  [0, 40]
+                 timerange:  [['2023-05-19T05:42:44.695'] ['2023-05-19T05:42:50.831']]
+                 azimut range:  62.49950015950033 63.723815246821935
+                 elevation range:  30.716222703473235 30.716722503502545
+
+
+Waterfall Spectrum per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT_HFG.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT_HFG.png" width=25%>
+
+Averaged Spectrum (mean) and the standart derivation as error's in red per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC_HFG.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC_HFG.png" width=25%>

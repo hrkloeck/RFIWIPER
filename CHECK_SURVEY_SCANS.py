@@ -65,9 +65,12 @@ def main():
     # set the parameters
     #
     data_file                 = opts.datafile
+    use_data                  = opts.usedata
     donotflag                 = opts.donotflag
+    dofgbyhand                = opts.hand_time_fg
     doplot_final_spec         = opts.doplot_final_spec
     doplot_final_full_data    = opts.doplot_final_full_data
+    fspec_yrange              = opts.fspec_yrange
     pltsave                   = opts.pltsave
     reset_flag                = opts.reset_flag
     change_flag               = opts.change_flag
@@ -77,6 +80,11 @@ def main():
     toutput                   = opts.toutput
     usencpus                  = opts.usencpus
 
+    # define hat to plot
+    #
+    plot_type                 = eval(use_data)
+    dofgbyhand                = eval(dofgbyhand)
+
     if toutput:
         print('\n== Flagging SKAMPI Data == \n')
 
@@ -85,6 +93,10 @@ def main():
     #
     #
     obsfile = h5py.File(data_file)
+
+    # extract OBSID 
+    #    
+    obs_id = obsfile.attrs['OBSID']
 
     if toutput:
         print('\n=== Investigate masking of the data in ',data_file)
@@ -97,6 +109,21 @@ def main():
     spectrum_keys        = findkeys(obsfile,keys=['scan','spectrum'],exactmatch=True)
     # #########  
     #
+
+
+
+    # ---------------------------------------------------------------------------------------------
+    # Define how many cpu are used 
+    # ---------------------------------------------------------------------------------------------
+
+    if donotncpus == False:
+        if usencpus < 0:
+            ncpus = multiprocessing.cpu_count() - 1
+        else:
+            ncpus = usencpus
+    else:
+        ncpus = 1
+
 
 
     # ---------------------------------------------------------------------------------------------
@@ -112,105 +139,129 @@ def main():
     bound_sigma          = [3,3]
     stats_type           = ['madmean','madmean'] 
     smooth_bound_kernel  = [31,31]
+    flag_on              = eval(use_data)        # only use noise diode off to generate flags ['ND0','ND1'] would do all
 
 
-    if donotncpus == False:
-        if usencpus < 0:
-            ncpus = multiprocessing.cpu_count() - 1
-        else:
-            ncpus = usencpus
-    else:
-        ncpus = 1
+    full_new_mask = {}
 
-    if donotflag:
+    for d in timestamp_keys:
+            time_data       = obsfile[d][:]
+            freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
+            #
+            spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
 
-        full_new_mask = {}
+            new_mask        = np.zeros(spectrum_data.shape).astype(bool)
+            new_mask[:,0]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
 
-        for d in timestamp_keys:
-            time_data      = obsfile[d][:]
-            freq           = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
+            # Here you can optional flag time by hand
+            # (this will be ignored in the spectrum flagging, but is present in the final mask)
+            #
+            if len(dofgbyhand) > 0:
 
-            if d.count('ND0') > 0:
+                az = obsfile[d.replace('timestamp','azimuth')][:]
+                el = obsfile[d.replace('timestamp','elevation')][:]
 
-                if toutput:
-                    print('\tgenerate flags for : ',d.replace('timestamp',''),'\n')
+                for i in range(len(dofgbyhand)):
+                    new_mask[dofgbyhand[i][0]:dofgbyhand[i][1],:] = True
+                    if toutput:
+                        print('\t- Hand FG in time')
+                        print('\t\t idx: ',dofgbyhand[i])
+                        # time info
+                        time_range  = Time([time_data[dofgbyhand[i][0]],time_data[dofgbyhand[i][1]]],format='unix')
+                        print('\t\t timerange: ',time_range.to_value('isot'))
+                        print('\t\t azimut range: ',az[dofgbyhand[i][0]],az[dofgbyhand[i][1]])
+                        print('\t\t elevation range: ',el[dofgbyhand[i][0]],el[dofgbyhand[i][1]])
 
-                spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
-                new_mask        = np.zeros(spectrum_data.shape).astype(bool)
-                new_mask[:,0]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
+            if toutput:
+                print('\tgenerate mask for : ',d.replace('timestamp',''),'\n')
+
+    
+            # =====
+            # Here do the flaging
+            #
+            if donotflag:
+
+                if RFIL.str_in_strlist(d,flag_on):
+
+                    if toutput:
+                        print('\tgenerate flags for : ',d.replace('timestamp',''),'\n')
 
 
-                if ncpus > 1:
-                        # Setting runs on mutiple cpu 
+                    if ncpus > 1:
+                            # Setting runs on mutiple cpu 
+                            #
+                            t_steps = spectrum_data.shape[0]
+                            idx     = 0
+                            step    = int(t_steps / ncpus) + 1
+                            #
+                            for i in range(step):
+                                idxq       = 0
+                                mmque      = []
+                                jobs       = []
+                                result_dic = {}
+                                for cps in range(ncpus):
+                                    if idx < t_steps:
+                                        mmque.append(multiprocessing.Queue())
+                                        if toutput:
+                                            print('Fan out jobs use ',ncpus,' CPU: ',idx,' ')
+                                        fg_spec            = spectrum_data[idx,1:]      # exclude the DC term for the FG estimates
+                                        cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+                                        jo = multiprocessing.Process(target=RFIL.flag_spec_by_smoothing, args=(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,\
+                                                                                 smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,idx,mmque[idxq],idxq))
+                                        jobs.append(jo)
+                                        jo.start()
+                                        idxq += 1
+                                    #
+                                    idx += 1
+
+                                # update the directory
+                                for k in range(len(jobs)):
+                                        result_dic.update(mmque[k].get())
+
+                                # wait until all the jobs are done
+                                for j in jobs:
+                                        jo.join()
+
+                                # get the results into a final mask
+                                rs = result_dic.keys()
+                                for k in result_dic:
+                                        new_mask[result_dic[k][0]][1:] = result_dic[k][1]
+
+                    else:
+
+                        # go through all the time stamps
                         #
-                        t_steps = spectrum_data.shape[0]
-                        idx     = 0
-                        step    = int(t_steps / ncpus) + 1
-                        #
-                        for i in range(step):
-                            idxq       = 0
-                            mmque      = []
-                            jobs       = []
-                            result_dic = {}
-                            for cps in range(ncpus):
-                                if idx < t_steps:
-                                    mmque.append(multiprocessing.Queue())
-                                    if toutput:
-                                        print('Fan out jobs use ',ncpus,' CPU: ',idx,' ')
-                                    fg_spec            = spectrum_data[idx,1:]      # exclude the DC term
-                                    cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
-                                    jo = multiprocessing.Process(target=RFIL.flag_spec_by_smoothing, args=(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,\
-                                                                             smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,idx,mmque[idxq],idxq))
-                                    jobs.append(jo)
-                                    jo.start()
-                                    idxq += 1
-                                #
-                                idx += 1
+                        for s in range(spectrum_data.shape[0]):
 
-                            # update the directory
-                            for k in range(len(jobs)):
-                                    result_dic.update(mmque[k].get())
+                            fg_spec            = spectrum_data[s,1:] # exclude the DC term for the FG estimates
+                            cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+                            fg_t               = process_time()
+                            final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,\
+                                                                                 smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel)
+                            new_mask[s][1:]    = final_sp_mask
 
-                            # wait until all the jobs are done
-                            for j in jobs:
-                                    jo.join()
-
-                            # get the results into a final mask
-                            rs = result_dic.keys()
-                            for k in result_dic:
-                                    new_mask[result_dic[k][0]][1:] = result_dic[k][1]
-
-                else:
-
-                    # go through all the time stamps
-                    #
-                    for s in range(spectrum_data.shape[0]):
-
-                        fg_spec            = spectrum_data[s,1:] # exclude the DC term
-                        cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
-                        fg_t               = process_time()
-                        final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,\
-                                                                             smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel)
-                        new_mask[s][1:]    = final_sp_mask
-
-                        if toutput:
-                            #do some stuff
-                            elapsed_time = process_time() - fg_t
-                            print('time uses',elapsed_time)
-
-                full_new_mask[d.replace('timestamp','')]      = new_mask
+                            if toutput:
+                                #do some stuff
+                                elapsed_time = process_time() - fg_t
+                                print('time uses',elapsed_time)
 
 
-        # merge a flag mask into one
-        keys = full_new_mask.keys()
+            full_new_mask[d.replace('timestamp','')]      = new_mask
 
-        final_maskcomb = copy.copy(new_mask)
 
-        for k in keys:
+    # ---------------------------------------------------------------------------------------------
+    # Merge the mask into a single one
+    # ---------------------------------------------------------------------------------------------
+
+    keys = full_new_mask.keys()
+
+    final_maskcomb = copy.copy(new_mask)
+
+    for k in keys:
             final_maskcomb = np.logical_or(full_new_mask[k],final_maskcomb)
 
-        final_mask = {}
-        for d in timestamp_keys:
+    final_mask = {}
+    for d in timestamp_keys:
             final_mask[d.replace('timestamp','')] = final_maskcomb
 
 
@@ -260,31 +311,42 @@ def main():
         import matplotlib
         #
         for d in timestamp_keys:
-            if toutput:
-                print('\tgenerate plot for : ',d.replace('timestamp',''))
 
-            spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:] 
-            freq           = obsfile[d.replace('timestamp','frequency')][:]
-
-            fullmask_data  = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
-            spectrum_mean  = fullmask_data.mean(axis=0)
-            spectrum_std   = fullmask_data.std(axis=0)
+            if RFIL.str_in_strlist(d,plot_type):
 
 
-            # print the spectrum
-            fig, ax = plt.subplots()
-            plt.title(d.replace('timestamp',''))
-            #ax.plot(freq,spectrum_mean)
-            ax.errorbar(freq,spectrum_mean,yerr=spectrum_std,marker='.',ecolor = 'r',alpha=0.3)
-            ax.set_xlabel('frequency [Hz]')
-            ax.set_ylabel('mean of data [Jy]')
-            if pltsave:
-                plt_fname = data_file.replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC'
-                plt_fname = filenamecounter(plt_fname,extention='.png')
-                fig.savefig(plt_fname,dpi=DPI)
-            else:
-                plt.show()
-        plt.clf()
+                if toutput:
+                    print('\tgenerate plot for : ',d.replace('timestamp',''))
+
+                spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
+
+                freq           = obsfile[d.replace('timestamp','frequency')][:]
+
+                fullmask_data  = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
+                spectrum_mean  = fullmask_data.mean(axis=0)
+                spectrum_std   = fullmask_data.std(axis=0)
+
+
+                # print the spectrum
+                fig, ax = plt.subplots()
+                plt.title('obsid: '+str(obs_id)+' '+d.replace('timestamp',''))
+                #ax.plot(freq,spectrum_mean)
+                ax.errorbar(freq,spectrum_mean,yerr=spectrum_std,marker='.',ecolor = 'r',alpha=0.3)
+                ax.set_xlabel('frequency [Hz]')
+                ax.set_ylabel('mean of data [Jy]')
+
+                plt_fspec_yrange = eval(fspec_yrange)
+                if max(plt_fspec_yrange) != 0 or min(pl_fspec_yrange) != 0:
+                    ax.set_ylim(*plt_fspec_yrange)
+
+                if pltsave:
+                    plt_fname = data_file.replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC'
+                    plt_fname = filenamecounter(plt_fname,extention='.png')
+                    fig.savefig(plt_fname,dpi=DPI)
+                else:
+                    plt.show()
+
+                plt.close()
 
 
 
@@ -303,33 +365,35 @@ def main():
         import matplotlib
         #
         for d in timestamp_keys:
-            if toutput:
-                print('\tgenerate plot for : ',d.replace('timestamp',''))
 
-            spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:] 
+            if RFIL.str_in_strlist(d,plot_type):
 
-            # print the waterfall plot
-            #
-            fullmask_data           = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
+                if toutput:
+                    print('\tgenerate plot for : ',d.replace('timestamp',''))
+
+                spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:] 
+
+                # print the waterfall plot
+                #
+                fullmask_data           = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
 
 
-            fig, ax = plt.subplots()
-            plt.title(d.replace('timestamp',''))
-            #wfplt = ax.imshow(fullmask_data,interpolation='nearest',origin='lower',vmin=stats[0]-3*stats[1],vmax=stats[0]+3*stats[1])
-            wfplt = ax.imshow(fullmask_data,interpolation='nearest',origin='lower',cmap=cmap,norm=mpl.colors.LogNorm(),aspect='auto')
+                fig, ax = plt.subplots()
+                plt.title('obsid: '+str(obs_id)+' '+d.replace('timestamp',''))
+                #wfplt = ax.imshow(fullmask_data,interpolation='nearest',origin='lower',vmin=stats[0]-3*stats[1],vmax=stats[0]+3*stats[1])
+                wfplt = ax.imshow(fullmask_data,interpolation='nearest',origin='lower',cmap=cmap,norm=mpl.colors.LogNorm(),aspect='auto')
 
-            ax.set_xlabel('channels')
-            ax.set_ylabel('time')
+                ax.set_xlabel('channels')
+                ax.set_ylabel('time')
 
-            if pltsave:
-                plt_fname = data_file.replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'WFPLT'
-                plt_fname = filenamecounter(plt_fname,extention='.png')
-                fig.savefig(plt_fname,dpi=DPI)
-            else:
-                plt.show()
+                if pltsave:
+                    plt_fname = data_file.replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'WFPLT'
+                    plt_fname = filenamecounter(plt_fname,extention='.png')
+                    fig.savefig(plt_fname,dpi=DPI)
+                else:
+                    plt.show()
 
-        plt.clf()
-
+                plt.close()
 
     #
     #
@@ -392,11 +456,21 @@ def new_argument_parser():
     parser.add_option('--DATA_FILE', dest='datafile', type=str,
                       help='DATA - HDF5 file of the Prototyp')
 
+    parser.add_option('--USEDATA', dest='usedata', type=str,default="['ND0']",
+                      help='use data noise diode off and on "[\'ND0\',\'ND1\']", default is [\'ND0\']')
+
     parser.add_option('--DONOTFLAG', dest='donotflag', action='store_false',
                       default=True,help='Do not flag the data.')
    
+    parser.add_option('--DO_FG_TIME_BY_HAND_', dest='hand_time_fg', type=str,default='[]',
+                      help='use the time index of the waterfall plot e.g. [[0,10],[100,110]]')
+
+
     parser.add_option('--DOPLOT_FINAL_SPEC', dest='doplot_final_spec', action='store_true',
                       default=False,help='Plot the final spectrum after Flagging')
+
+    parser.add_option('--FINAL_SPEC_YRANGE', dest='fspec_yrange', type=str,default='[0,0]',
+                      help='[ymin,ymax]')
 
     parser.add_option('--DOPLOT_FINAL_WATERFALL', dest='doplot_final_full_data', action='store_true',
                       default=False,help='Plot the final waterfall after Flagging')

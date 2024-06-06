@@ -9,7 +9,7 @@ The first test dataset is EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 and is av
  more to come in the future.
 
 
-'''
+```
 python CHECK_SURVEY_SCANS.py
 Usage: CHECK_SURVEY_SCANS.py [options]
 
@@ -40,4 +40,4 @@ Options:
   --HELP                Show info on input
 
 
-'''
+```

@@ -68,6 +68,7 @@ def main():
     use_data                  = opts.usedata
     donotflag                 = opts.donotflag
     dofgbyhand                = opts.hand_time_fg
+    time_sigma                = opts.auto_time_fg_sigma
     doplot_final_spec         = opts.doplot_final_spec
     doplot_final_full_data    = opts.doplot_final_full_data
     fspec_yrange              = opts.fspec_yrange
@@ -79,6 +80,8 @@ def main():
     donotncpus                = opts.donotncpus
     toutput                   = opts.toutput
     usencpus                  = opts.usencpus
+
+
 
     # define hat to plot
     #
@@ -151,11 +154,39 @@ def main():
             spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
 
             new_mask        = np.zeros(spectrum_data.shape).astype(bool)
-            new_mask[:,0]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
 
-            # Here you can optional flag time by hand
-            # (this will be ignored in the spectrum flagging, but is present in the final mask)
+            if toutput:
+                print('\tgenerate mask for : ',d.replace('timestamp',''),'\n')
+
+
+            # ---------------------------------------------------------------------------------------------
+            # Mask the first and last channel 
+            # ---------------------------------------------------------------------------------------------
+
+            new_mask[:,0]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
+            new_mask[:,-1]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
+ 
+
+            # ---------------------------------------------------------------------------------------------
+            # spectrum flagging individual times (takes care of ampl) DO NOT USE THE NOISE DIODE DATA HERE
+            # ---------------------------------------------------------------------------------------------
+            if time_sigma != 0:
+
+                if RFIL.str_in_strlist(d,flag_on):
+
+                    median_over_freq_per_time = np.median(spectrum_data,axis=1)
+                    time_mask                 = RFIL.boundary_mask_data(median_over_freq_per_time,median_over_freq_per_time,sigma=time_sigma,stats_type='madmean',do_info=False).astype(int)
+
+                    for i in range(len(time_mask)):
+                        if time_mask[i] == 1:
+                            new_mask[i,:] = True
+
+            # ---------------------------------------------------------------------------------------------
+            # spectrum flagging by input 
             #
+            # (this will be ignored in the spectrum flagging, but is present in the final mask)
+            # ---------------------------------------------------------------------------------------------
+
             if len(dofgbyhand) > 0:
 
                 az = obsfile[d.replace('timestamp','azimuth')][:]
@@ -172,14 +203,15 @@ def main():
                         print('\t\t azimut range: ',az[dofgbyhand[i][0]],az[dofgbyhand[i][1]])
                         print('\t\t elevation range: ',el[dofgbyhand[i][0]],el[dofgbyhand[i][1]])
 
-            if toutput:
-                print('\tgenerate mask for : ',d.replace('timestamp',''),'\n')
 
-    
-            # =====
-            # Here do the flaging
-            #
+
+
+
+            # ---------------------------------------------------------------------------------------------
+            # flag individual each spectrum by applying denoising with a lot of smoothing
+            # ---------------------------------------------------------------------------------------------
             if donotflag:
+
 
                 if RFIL.str_in_strlist(d,flag_on):
 
@@ -205,7 +237,15 @@ def main():
                                         if toutput:
                                             print('Fan out jobs use ',ncpus,' CPU: ',idx,' ')
                                         fg_spec            = spectrum_data[idx,1:]      # exclude the DC term for the FG estimates
-                                        cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+
+                                        # here check if time has been flagged
+                                        check_time_fg = np.sum(new_mask[idx].astype(int))
+                                        if check_time_fg != new_mask.shape[1]:                                        
+                                            cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+                                        else:
+                                            cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
+
+                                        # Here do the multiprocessing
                                         jo = multiprocessing.Process(target=RFIL.flag_spec_by_smoothing, args=(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,\
                                                                                  smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,idx,mmque[idxq],idxq))
                                         jobs.append(jo)
@@ -234,7 +274,15 @@ def main():
                         for s in range(spectrum_data.shape[0]):
 
                             fg_spec            = spectrum_data[s,1:] # exclude the DC term for the FG estimates
-                            cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+                            
+                            # check if time has been flagged
+                            #
+                            check_time_fg = np.sum(new_mask[s].astype(int))
+                            if check_time_fg != new_mask.shape[1]:                                        
+                                cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+                            else:
+                                cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
+
                             fg_t               = process_time()
                             final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,\
                                                                                  smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel)
@@ -371,11 +419,15 @@ def main():
                 if toutput:
                     print('\tgenerate plot for : ',d.replace('timestamp',''))
 
-                spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:] 
+                spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
+
+                #spectrum_data = spectrum_data[0:1000,:]
+
 
                 # print the waterfall plot
                 #
                 fullmask_data           = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')],fill_value=np.nan)
+                #fullmask_data           = ma.masked_array(spectrum_data,mask=final_mask[d.replace('timestamp','')][0:1000,:],fill_value=np.nan)
 
 
                 fig, ax = plt.subplots()
@@ -465,6 +517,8 @@ def new_argument_parser():
     parser.add_option('--DO_FG_TIME_BY_HAND_', dest='hand_time_fg', type=str,default='[]',
                       help='use the time index of the waterfall plot e.g. [[0,10],[100,110]]')
 
+    parser.add_option('--DO_FG_TIME_AUTO_SIGMA', dest='auto_time_fg_sigma', type=float,default=0,
+                      help='automatically determine bad time use threshold. default = 0 is off use e.g. = 5')
 
     parser.add_option('--DOPLOT_FINAL_SPEC', dest='doplot_final_spec', action='store_true',
                       default=False,help='Plot the final spectrum after Flagging')

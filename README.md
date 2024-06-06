@@ -68,3 +68,13 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 ```
 python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOPLOT_FINAL_WATERFALL --DO_FG_TIME_BY_HAND='[[0,40],[1695,1750],[3405,3455],[5114,5162],[6820,6875]]' --DOSAVEPLOT
 ```
+
+This also provides some output e.g. for the first entry of the --DO_FG_TIME_BY_HAND settings
+
+	- Hand FG in time
+                 idx:  [0, 40]
+                 timerange:  [['2023-05-19T05:42:44.695']
+ ['2023-05-19T05:42:50.831']]
+                 azimut range:  62.49950015950033 63.723815246821935
+                 elevation range:  30.716222703473235 30.716722503502545
+

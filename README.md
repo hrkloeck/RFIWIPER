@@ -50,6 +50,15 @@ Options:
 python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOSAVEPLOT
 ```
 
+Waterfall Spectrum per polarisation (P0/P1)
+
+![alt text](EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT.png "Spectrum P0"){width=25%}
+![alt text](EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT.png "Spectrum P1"){width=25%}
+
+Spectrum per polarisation (P0/P1)
+
+![alt text](EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC.png "Spectrum P0"){width=25%}
+![alt text](EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC.png "Spectrum P1"){width=25%}
 
 
 ```

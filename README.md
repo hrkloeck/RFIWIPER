@@ -73,8 +73,17 @@ This also provides some output e.g. for the first entry of the --DO_FG_TIME_BY_H
 
 	- Hand FG in time
                  idx:  [0, 40]
-                 timerange:  [['2023-05-19T05:42:44.695']
- ['2023-05-19T05:42:50.831']]
+                 timerange:  [['2023-05-19T05:42:44.695'] ['2023-05-19T05:42:50.831']]
                  azimut range:  62.49950015950033 63.723815246821935
                  elevation range:  30.716222703473235 30.716722503502545
 
+
+Waterfall Spectrum per polarisation (P0/P1)
+
+![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT.png" width=25%>
+![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT.png" width=25%>
+
+Averaged Spectrum (mean) and the standart derivation as error's in red per polarisation (P0/P1)
+
+![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC.png" width=25%>
+![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC.png" width=25%>

@@ -52,15 +52,13 @@ python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ
 
 Waterfall Spectrum per polarisation (P0/P1)
 
-![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT.png" width=5%>
-
-![alt text](EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT.png "Spectrum P0"){width=25%}
-![alt text](EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT.png "Spectrum P1"){width=25%}
+![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT.png" width=25%>
+![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT.png" width=25%>
 
 Spectrum per polarisation (P0/P1)
 
-![alt text](EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC.png "Spectrum P0"){width=25%}
-![alt text](EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC.png "Spectrum P1"){width=25%}
+![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC.png" width=25%>
+![]()<img src="EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC.png" width=25%>
 
 
 ```

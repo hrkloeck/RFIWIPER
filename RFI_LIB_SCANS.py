@@ -307,40 +307,48 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
     specially for doing single azimuthe scans
     """
 
-    # do the smooth flagging
-    #
-    grad_select = np.array([]).astype(bool)
-    for sp in range(len(splitting)-1):
-        
-        if splitting[sp+1] == -1:
-            sp_freq       = freq[splitting[sp]:]
-            sp_data       = np.array(fg_spec)[splitting[sp]:]
-            sp_data_mask  = cleanup_spec_mask[splitting[sp]:]
-        else:
-            sp_freq       = freq[splitting[sp]:splitting[sp+1]]
-            sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
-            sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
+
+    if np.sum(cleanup_spec_mask) != len(cleanup_spec_mask):
+
+        # do the smooth flagging
+        #
+        grad_select = np.array([]).astype(bool)
+        for sp in range(len(splitting)-1):
+
+            if splitting[sp+1] == -1:
+                sp_freq       = freq[splitting[sp]:]
+                sp_data       = np.array(fg_spec)[splitting[sp]:]
+                sp_data_mask  = cleanup_spec_mask[splitting[sp]:]
+            else:
+                sp_freq       = freq[splitting[sp]:splitting[sp+1]]
+                sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
+                sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
 
 
-        grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],\
-                                           usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
-                                           smooth_bound_kernel=smooth_bound_kernel[sp])
+            grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],\
+                                               usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
+                                               smooth_bound_kernel=smooth_bound_kernel[sp])
 
-        grad_select = np.append(grad_select,grad_selectsp)
+            grad_select = np.append(grad_select,grad_selectsp)
 
 
-    # clean up based on some pattern 
-    #
-    clean_bins = [\
-                      [True,False,True],\
-                      [True,False,False,True],\
-                      [True,False,False,False,True],\
-                      [True,False,False,False,False,True],\
-                      [True,False,False,False,False,False,True],
-                      [False,False,False,True,False,False,False]\
-                      ]
+        # clean up based on some pattern 
+        #
+        clean_bins = [\
+                          [True,False,True],\
+                          [True,False,False,True],\
+                          [True,False,False,False,True],\
+                          [True,False,False,False,False,True],\
+                          [True,False,False,False,False,False,True],
+                          [False,False,False,True,False,False,False]\
+                          ]
 
-    final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
+        final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
+
+    else:
+
+        final_sp_mask = cleanup_spec_mask.astype(bool)
+
 
     if mtque != None:
         resultdic =  {}

@@ -106,7 +106,7 @@ python -W ignore CHECK_SURVEY_SCANS.py
 ```
 
 Note: that the setting --DONOTCPUS is sometimes faster than using
-ncpus (if the number is small < 10)
+ncpus (if the number is small < 10). Runs 0.8 sec per spectrum ~ 1.5 hours for 1 polarisation
 
 Waterfall Spectrum per polarisation (P0/P1)
 

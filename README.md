@@ -124,6 +124,24 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 - Now to the full flagging
 
 ```
-python -W ignore CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5  --DO_FG_TIME_AUTO_SIGMA=5 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK
+
+python -W ignore CHECK_SURVEY_SCANS.py
+--DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5
+--DO_FG_TIME_AUTO_SIGMA=5 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC
+--DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK --DONOTCPUS
 
 ```
+
+Note: that the setting --DONOTCPUS is sometimes faster than using
+ncpus (if the number is small < 10)
+
+Waterfall Spectrum per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT_FULLFG.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT_FULLFG.png" width=25%>
+
+Averaged Spectrum (mean) and the standart derivation as error's in red per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC_FULLFG.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC_FULLFG.png" width=25%>
+

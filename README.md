@@ -77,7 +77,7 @@ Options:
 
 ## Lets have a go on the file
 
-- Just look at the original dataset without flagging
+- Just look at the **original dataset without flagging**
 
 ```
 python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOSAVEPLOT
@@ -94,7 +94,7 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC.png" width=25%>
 
 
-- Just flag by hand some times
+- Just **flag by hand** some times
 
 ```
 python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOPLOT_FINAL_WATERFALL --DO_FG_TIME_BY_HAND='[[0,40],[1695,1750],[3405,3455],[5114,5162],[6820,6875]]' --DOSAVEPLOT
@@ -121,7 +121,7 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 
 
 
-- Now to the full flagging
+- Now do the **full flagging**
 
 ```
 

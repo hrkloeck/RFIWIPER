@@ -302,7 +302,7 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
 
 
-def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx=0,mtque=None,njobs=1):
+def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx=0,mtque=None,njobs=1):
     """
     specially for doing single azimuthe scans
     """
@@ -333,7 +333,7 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
                 sys.exit(-1)
 
 
-            grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],\
+            grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],kernel_sequence_type=kernel_sequence_type[sp],\
                                                usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
                                                smooth_bound_kernel=smooth_bound_kernel[sp])
 
@@ -387,7 +387,37 @@ def convolve_1d_data(data,smooth_type='hanning',smooth_kernel=3):
     return sm_data
 
 
-def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,usedbinning=1,bound_sigma=4,stats_type='median',smooth_bound_kernel=31):
+def kernel_sequence(kernel_sizes,kernel_sequence_type='middle_fast'):
+    """
+    return kernel_sequence
+    caution this impacts on the processing time and the
+    quality of the resulting spectrum
+    """
+
+    kernel = []
+    for i in range(1,kernel_sizes):
+        #
+        if kernel_sequence_type == 'middle_fast':
+             if (3*i**2)%2 == 0:
+                 kernel.append(3*i**2 + 1)
+             else:
+                 kernel.append(3*i**2)
+
+        elif kernel_sequence_type == 'fast':
+            kernel.append(2**i)
+
+        else:
+            # slow
+            #
+            # a step by step kernel generates a
+            # cleaner spectrum, but takes 10 sec 
+            # per time step
+            #
+            kernel.append(2 * i + 1)
+
+    return kernel
+
+def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,kernel_sequence_type='middle_fast',usedbinning=1,bound_sigma=4,stats_type='median',smooth_bound_kernel=31):
     """
     """
     import matplotlib.pyplot as plt
@@ -398,18 +428,11 @@ def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,usedb
     grad_select     = copy(spec_mask)
     grad_select_org = copy(spec_mask)
 
-    # a step by step kernel generates a
-    # cleaner spectrum, but takes 10 sec 
-    # per time step
-    #
-    # kernel = 2 * np.arange(kernel_sizes) + 1
 
-    kernel = []
-    for i in range(1,kernel_sizes):
-        if (3*i**2)%2 == 0:
-            kernel.append(3*i**2 + 1)
-        else:
-            kernel.append(3*i**2)
+    # set the kernel sequence
+    #
+    kernel = kernel_sequence(kernel_sizes,kernel_sequence_type)
+
 
     info_fg   = []
     info_fg_k = []

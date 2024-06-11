@@ -417,7 +417,7 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
     fg_spec : np.ndarray
         1D array of the spectrum to be cleaned
     freq : np.ndarray
-        1D array of the frequencies (TODO: IS THIS ALWAYS THE SAME FOR EVERY FG_SPEC?)
+        1D array of the frequencies
     cleanup_spec_mask : np.ndarray
         1D array of the mask for the spectrum
     splitting : list
@@ -488,6 +488,41 @@ def flag_spec_by_smoothing_vect(data,freq,mask,splitting,kernel_sizes,smooth_typ
     vectorized version of flag_spec_by_smoothing, operates on the whole dataset
     """
     pass
+
+def batch_convolve_1d_data(data,smooth_type='hanning',smooth_kernel=3):
+    """
+    Vectorized version of convolve_1d_data. Uses PyTorch batch convolutions instead of scipy convolve, and Heat as a backend for parallelization.
+
+    Parameters
+    ----------
+    data_2d : np.ndarray
+        2D array of data to be smoothed, shape (n, m) with n = timestamps, m = number of channels per timestamp
+    smooth_type : str
+        type of smoothing kernel. Options are 'hamming', 'wiener'. Default is 'hamming', which convolves the 1D data with Hamming window of size `smooth_kernel`
+    smooth_kernel : int
+        size of the smoothing kernel. Default is 3    
+    """
+    import torch
+    import heat as ht
+
+    if smooth_type == 'hamming':
+        sm_kernel = torch.hamming_window(smooth_kernel, dtype=torch.float64)
+    elif smooth_type == 'wiener':
+        # TODO no idea what's going on here
+        sm_kernel = torch.ones(smooth_kernel)
+    else:
+        raise ValueError(f"Unknown smoothing type: {smooth_type}")
+    
+    # convert data to torch tensor and add a batch dimension
+    data_2d = torch.tensor(data).unsqueeze(0)
+
+    # expand the smoothing kernel to match the shape of the data
+    batch_sm_kernel = sm_kernel.unsqueeze(0).unsqueeze(0).expand(data_2d.shape[0], 1, -1)
+
+    # batch-convolve each timestamp with the smoothing kernel
+    sm_data = torch.nn.functional.conv1d(data_2d, batch_sm_kernel, padding=smooth_kernel//2, groups=data_2d.shape[0]) / sm_kernel.sum()
+
+    return sm_data
 
 def convolve_1d_data(data,smooth_type='hanning',smooth_kernel=3):
     """

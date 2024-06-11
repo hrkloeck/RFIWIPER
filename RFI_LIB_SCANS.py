@@ -15,7 +15,7 @@
 import numpy as np
 import numpy.ma as ma
 from copy import deepcopy
-from scipy.signal import convolve2d
+from scipy.signal import convolve2d,correlate
 from scipy import stats
 
 def data_stats(data,stats_type='mean',accur=100):
@@ -217,38 +217,33 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
     """
     provide a sigma boundary 
     """
+    import copy
+
+    from time import process_time
 
     # To get the upper and lower boundaries we used binned data and its statistics
     # 
-    stats_x_data,stats_x_datastd  = checkerstats(xdata,usedbinning,stats_type)
+    stats_x_data,stats_x_datastd             = checkerstats(xdata,usedbinning,stats_type)
     stats_y_data,stats_y_datastd,stats_mask  = checkerstats_sel(ydata,usedbinning,ydata_mask,stats_type)
+        
 
+    # determine a sigma boundary
+    #
+    # freq values
+    x_boundary_values = stats_x_data
+    x_boundary_values = np.insert(x_boundary_values,0,xdata[0])
+    x_boundary_values = np.insert(x_boundary_values,-1,xdata[-1])
+    #
+    # amp values
+    y_boundary_values_up  = stats_y_data + bound_sigma * stats_y_datastd
+    #
+    y_boundary_values_up  = np.insert(y_boundary_values_up,0,y_boundary_values_up[0])
+    y_boundary_values_up  = np.insert(y_boundary_values_up,-1,y_boundary_values_up[-1])
 
-    # determine the boundary region 
+    y_boundary_values_low = stats_y_data - bound_sigma * stats_y_datastd
     #
-    # x range
-    #
-    x_boundary_values = []
-    x_boundary_values.append(xdata[0])
-    for d in range(len(stats_x_data)):
-        x_boundary_values.append(stats_x_data[d])
-    x_boundary_values.append(xdata[-1])
-
-
-    # y range 
-    #
-    #
-    y_boundary_values_up  = []
-    y_boundary_values_low = []
-    #
-    y_boundary_values_up.append(stats_y_data[0] + bound_sigma * stats_y_datastd[0])
-    y_boundary_values_low.append(stats_y_data[0] - bound_sigma * stats_y_datastd[0])
-    for d in range(len(stats_y_data)):
-        y_boundary_values_up.append(stats_y_data[d] + bound_sigma * stats_y_datastd[d])
-        y_boundary_values_low.append(stats_y_data[d] - bound_sigma * stats_y_datastd[d])
-    y_boundary_values_up.append(stats_y_data[-1] + bound_sigma * stats_y_datastd[-1])
-    y_boundary_values_low.append(stats_y_data[-1] - bound_sigma * stats_y_datastd[-1])
-
+    y_boundary_values_low = np.insert(y_boundary_values_low,0,y_boundary_values_low[0])
+    y_boundary_values_low = np.insert(y_boundary_values_low,-1,y_boundary_values_low[-1])
 
     # Here check on the boundary 
     # 
@@ -269,22 +264,26 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
             bound_select         = np.zeros(len(y_boundary_values_low)).astype(bool)
 
 
-    # in case there are faulty values in
-    # checkerstats_selcheckerstats_sel function
-    # these has been marked
+    # case there are also bins the have been marked by 
+    # checkerstats_selcheckerstats_sel
     #
+
     if max(stats_mask) > 0:
         stats_mask    = stats_mask.astype(bool)
         stats_mask    = np.insert(stats_mask,0,bound_select[0])
         stats_mask    = np.insert(stats_mask,len(stats_mask),bound_select[-1])
         bound_select  = np.logical_or(bound_select,stats_mask.astype(bool))
 
-    
+
     # Interpolate and convolve the boundary region 
     # of the data and use this to mark bad data
     #
-    interp_boundary_up         = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],np.array(y_boundary_values_up)[np.invert(bound_select)])
-    interp_boundary_low        = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],np.array(y_boundary_values_low)[np.invert(bound_select)])
+    interp_boundary_up         = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],\
+                                               np.array(y_boundary_values_up)[np.invert(bound_select)])
+    # check timeing of process
+    #
+    interp_boundary_low        = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],\
+                                               np.array(y_boundary_values_low)[np.invert(bound_select)])
     #
     if smooth_kernel > 3:
         boundary_up                = convolve_1d_data(interp_boundary_up,smooth_type='wiener',smooth_kernel=smooth_kernel)
@@ -302,45 +301,53 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
 
 
-def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,idx=0,mtque=None,njobs=1):
+
+def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx=0,mtque=None,njobs=1):
     """
     specially for doing single azimuthe scans
     """
 
-    # do the smooth flagging
-    #
-    grad_select = np.array([]).astype(bool)
-    for sp in range(len(splitting)-1):
-        
-        if splitting[sp+1] == -1:
-            sp_freq       = freq[splitting[sp]:]
-            sp_data       = np.array(fg_spec)[splitting[sp]:]
-            sp_data_mask  = cleanup_spec_mask[splitting[sp]:]
-        else:
-            sp_freq       = freq[splitting[sp]:splitting[sp+1]]
-            sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
-            sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
+    from time import process_time
+
+    if np.sum(cleanup_spec_mask) != len(cleanup_spec_mask):
+
+        # do the smooth flagging
+        #
+        grad_select = np.array([]).astype(bool)
+        for sp in range(len(splitting)-1):
+
+            if splitting[sp+1] == -1:
+                sp_freq       = freq[splitting[sp]:]
+                sp_data       = np.array(fg_spec)[splitting[sp]:]
+                sp_data_mask  = cleanup_spec_mask[splitting[sp]:]
+            else:
+                sp_freq       = freq[splitting[sp]:splitting[sp+1]]
+                sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
+                sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
 
 
-        grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],\
-                                           usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
-                                           smooth_bound_kernel=smooth_bound_kernel[sp])
+            if (len(sp_freq)%usedbinning[sp]) != 0:
+                print('\nCAUTION \n\nThe setting produced sub-arrays with no equal sizes.')
+                print('Subrray size is and used binning parameter ',len(sp_freq),usedbinning[sp])
+                print('Change usedbinning parameter in main programme\n\n')
+                sys.exit(-1)
 
-        grad_select = np.append(grad_select,grad_selectsp)
+
+            grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],kernel_sequence_type=kernel_sequence_type[sp],\
+                                               usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
+                                               smooth_bound_kernel=smooth_bound_kernel[sp])
+
+            grad_select = np.append(grad_select,grad_selectsp)
 
 
-    # clean up based on some pattern 
-    #
-    clean_bins = [\
-                      [True,False,True],\
-                      [True,False,False,True],\
-                      [True,False,False,False,True],\
-                      [True,False,False,False,False,True],\
-                      [True,False,False,False,False,False,True],
-                      [False,False,False,True,False,False,False]\
-                      ]
+        # clean up process is of the order of 0.04 sec
+        #
+        final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
 
-    final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
+    else:
+
+        final_sp_mask = cleanup_spec_mask.astype(bool)
+
 
     if mtque != None:
         resultdic =  {}
@@ -371,33 +378,61 @@ def convolve_1d_data(data,smooth_type='hanning',smooth_kernel=3):
     elif smooth_type == 'wiener':
          sm_data = wiener(data,smooth_kernel)
 
+    elif smooth_type == 'kernelinput':
+        sm_data   = convolve(data,smooth_kernel,mode='same')
+
     else:
         sm_data = deepcopy(data)
 
     return sm_data
 
 
-def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,usedbinning=1,bound_sigma=4,stats_type='median',smooth_bound_kernel=31):
+def kernel_sequence(kernel_sizes,kernel_sequence_type='middle_fast'):
+    """
+    return kernel_sequence
+    caution this impacts on the processing time and the
+    quality of the resulting spectrum
+    """
+
+    kernel = []
+    for i in range(1,kernel_sizes):
+        #
+        if kernel_sequence_type == 'middle_fast':
+             if (3*i**2)%2 == 0:
+                 kernel.append(3*i**2 + 1)
+             else:
+                 kernel.append(3*i**2)
+
+        elif kernel_sequence_type == 'fast':
+            kernel.append(2**i)
+
+        else:
+            # slow
+            #
+            # a step by step kernel generates a
+            # cleaner spectrum, but takes 10 sec 
+            # per time step
+            #
+            kernel.append(2 * i + 1)
+
+    return kernel
+
+def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,kernel_sequence_type='middle_fast',usedbinning=1,bound_sigma=4,stats_type='median',smooth_bound_kernel=31):
     """
     """
     import matplotlib.pyplot as plt
     from copy import copy
 
+    from time import process_time
+
     grad_select     = copy(spec_mask)
     grad_select_org = copy(spec_mask)
 
-    # a step by step kernel generates a
-    # cleaner spectrum, but takes 10 sec 
-    # per time step
-    #
-    # kernel = 2 * np.arange(kernel_sizes) + 1
 
-    kernel = []
-    for i in range(1,kernel_sizes):
-        if (3*i**2)%2 == 0:
-            kernel.append(3*i**2 + 1)
-        else:
-            kernel.append(3*i**2)
+    # set the kernel sequence
+    #
+    kernel = kernel_sequence(kernel_sizes,kernel_sequence_type)
+
 
     info_fg   = []
     info_fg_k = []
@@ -425,9 +460,42 @@ def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,usedb
     return grad_select
 
 
-def clean_up_1d_mask(mask,bins=[[True,False,True]],setvalue=True):
+def clean_up_1d_mask(mask,clean_bins=[[1,0,1]],setvalue=1):
     """
     just clean up single entries
+    """
+    from copy import deepcopy
+
+    # convert the boolmask into integer
+    inputmask  = deepcopy(mask).astype(int)
+
+
+    for bins in clean_bins:
+        # convolve teh mask with a kernel (clean_bins)
+        #
+        conv_mask  = convolve_1d_data(inputmask,'kernelinput',bins)
+
+        # expected maximum of convolution
+        expected_max_correlation = np.sum(bins)
+
+        # find the maxima
+        maxcor = conv_mask == expected_max_correlation
+        maxcor_idx = np.where(maxcor == True)[0].tolist()
+
+        # 
+        for cidx in maxcor_idx:
+            if len(bins)%2 > 0:
+                inputmask[cidx-int((len(bins)-1)/2):cidx+int((len(bins)-1)/2) + 1] = setvalue
+            else:
+                inputmask[cidx-int(len(bins)/2):cidx+int(len(bins)/2)] = setvalue
+
+
+    return inputmask.astype(bool)
+
+
+def clean_up_1d_maskold(mask,bins=[[True,False,True]],setvalue=True):
+    """
+    just clean up single entries, this takes for ages! sliding window mask matching!
     """
     from copy import deepcopy
     inputmask = deepcopy(mask)
@@ -442,50 +510,84 @@ def clean_up_1d_mask(mask,bins=[[True,False,True]],setvalue=True):
     return inputmask
 
 
-
 def checkerstats(data,split,stats_type):
 
     sp_data = np.array_split(data,split)
 
-    statsmean = []
-    statsstd  = []
+    if stats_type == 'madmadmedian':
+        #
+        from astropy.stats import mad_std, median_absolute_deviation
+        #
+        data_mean      = median_absolute_deviation(sp_data,axis=1)
+        data_std       = mad_std(sp_data,axis=1)
 
-    for sp in sp_data:
-        stdata = data_stats(sp,stats_type,accur=100)
-        statsmean.append(stdata[0])
-        statsstd.append(stdata[1])
+    elif stats_type == 'madmean':
+        #
+        from astropy.stats import mad_std
+        #
+        data_mean      = np.mean(sp_data,axis=1) 
+        data_std       = mad_std(sp_data,axis=1)
 
-    return statsmean,statsstd
+    elif stats_type == 'madmedian':
+        #
+        from astropy.stats import mad_std
+        #
+        data_mean      = np.median(sp_data,axis=1) 
+        data_std       = mad_std(sp_data,axis=1)
+
+    elif stats_type == 'median':
+        data_mean      = np.median(sp_data,axis=1)
+        data_std       = np.std(sp_data,axis=1)
+
+    else:
+        print('bugger not know')
+        sys.exit(-1)
+
+    return data_mean,data_std
+
 
 def checkerstats_sel(data,split,select,stats_type):
     """
     note that the mask (1/True) is indicating bad data 
     """
+
     sp_data        = np.array_split(data,split)
-    sp_data_select = np.array_split(select,split)
+    sp_data_select = np.invert(np.array_split(select,split)) # this is from old times
 
-    sel_mask       = np.zeros(len(sp_data))
+    data_masked    = ma.masked_array(sp_data,sp_data_select)
+
+
+    if stats_type == 'madmadmedian':
+        #
+        from astropy.stats import mad_std, median_absolute_deviation
+        #
+        data_mean      = median_absolute_deviation(data_masked,axis=1)
+        data_std       = mad_std(data_masked,axis=1)
+
+    elif stats_type == 'madmean':
+        #
+        from astropy.stats import mad_std
+        #
+        data_mean      = np.mean(data_masked,axis=1) 
+        data_std       = mad_std(data_masked,axis=1)
+
+    elif stats_type == 'madmedian':
+        #
+        from astropy.stats import mad_std
+        #
+        data_mean      = np.median(data_masked,axis=1) 
+        data_std       = mad_std(data_masked,axis=1)
+
+    elif stats_type == 'median':
+        data_mean      = np.median(data_masked,axis=1)
+        data_std       = np.std(data_masked,axis=1)
+
+    else:
+        print('bugger not know')
+        sys.exit(-1)
+
     
-    statsmean = []
-    statsstd  = []
-
-    for sp in range(len(sp_data)):
-        spdata = sp_data[sp][sp_data_select[sp]]
-
-        if len(spdata) > 1:
-            stdata = data_stats(spdata,stats_type,accur=100)
-        else:
-            if len(statsmean) != 0:
-                stdata = [statsmean[-1],statsstd[-1]]
-                sel_mask[sp] = 1
-            else:
-                stdata = data_stats(data,stats_type,accur=100)
-                sel_mask[sp] = 1
-
-        statsmean.append(stdata[0])
-        statsstd.append(stdata[1])
-
-    return statsmean,statsstd,sel_mask
+    return data_mean,data_std,data_mean.mask.astype(int)
 
 
 def flag_impact(mask,orgmask):

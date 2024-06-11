@@ -10,8 +10,10 @@ The first test dataset is EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 and is av
 
 
 ```
-python CHECK_SURVEY_SCANS.py
+python CHECK_SURVEY_SCANS.py -h
+
 Usage: CHECK_SURVEY_SCANS.py [options]
+
 
 Options:
   -h, --help            show this help message and exit
@@ -19,14 +21,25 @@ Options:
   --USEDATA=USEDATA     use data noise diode off and on "['ND0','ND1']",
                         default is ['ND0']
   --DONOTFLAG           Do not flag the data.
-  --DO_FG_TIME_BY_HAND_=HAND_TIME_FG
+  --PROCESSING_TYPE=FLAGPROCESSING
+                        setting how accurate/much time the flagging proceed.
+                        FAST, SEMIFAST, SLOW, default is SEMIFAST
+  --DO_FG_TIME_BY_HAND=HAND_TIME_FG
                         use the time index of the waterfall plot e.g.
                         [[0,10],[100,110]]
+  --DO_FG_TIME_AUTO_SIGMA=AUTO_TIME_FG_SIGMA
+                        automatically determine bad time use threshold.
+                        default = 0 is off use e.g. = 5
+  --DO_FG_BOUNDARY_SIGMA=BOUND_SIGMA_INPUT
+                        if the spectram is maske to much at teh edges
+                        increase. [default = 3 sigma]
   --DOPLOT_FINAL_SPEC   Plot the final spectrum after Flagging
   --FINAL_SPEC_YRANGE=FSPEC_YRANGE
                         [ymin,ymax]
   --DOPLOT_FINAL_WATERFALL
                         Plot the final waterfall after Flagging
+  --DOPLOT_WITH_INVERTED_MASK
+                        Plot the final plots using an inverted mask
   --DOSAVEPLOT          Save the plots as figures
   --EDIT_FLAG           Switch to replace the old with the new mask
   --RESET_FLAG          Switch to clear all mask
@@ -39,14 +52,13 @@ Options:
   --SILENCE             Switch off all output
   --HELP                Show info on input
 
-
 ```
 
 
 
 ## Lets have a go on the file
 
-- Just look at the original dataset without flagging
+- Just look at the **original dataset without flagging**
 
 ```
 python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOSAVEPLOT
@@ -63,7 +75,7 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC.png" width=25%>
 
 
-- Just flag by hand some times
+- Just **flag by hand** some times
 
 ```
 python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOPLOT_FINAL_WATERFALL --DO_FG_TIME_BY_HAND='[[0,40],[1695,1750],[3405,3455],[5114,5162],[6820,6875]]' --DOSAVEPLOT
@@ -87,3 +99,30 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC_HFG.png" width=25%>
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC_HFG.png" width=25%>
+
+
+
+- Now do the **full flagging**
+
+```
+
+python -W ignore CHECK_SURVEY_SCANS.py
+--DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5
+--DO_FG_TIME_AUTO_SIGMA=5 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC
+--DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK --DONOTCPUS
+
+```
+
+Note: that the setting --DONOTCPUS is sometimes faster than using
+ncpus (if the number is small < 10). Runs 0.8 sec per spectrum ~ 1.5 hours for 1 polarisation
+
+Waterfall Spectrum per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT_FULLFG.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT_FULLFG.png" width=25%>
+
+Averaged Spectrum (mean) and the standart derivation as error's in red per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC_FULLFG.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC_FULLFG.png" width=25%>
+

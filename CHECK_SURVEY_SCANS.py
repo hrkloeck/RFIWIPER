@@ -26,6 +26,10 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from time import process_time
 import RFI_LIB_SCANS as RFIL
+
+# use graphviz to plot the flowchart
+import graphviz
+
 # ###################################################
 #
 # Some plotting parameter 
@@ -107,7 +111,7 @@ def main():
     splitting            = [0,6000,-1]           # split the spectrum into two sections
     #kernel_sizes         = [100,500]            # setting for continous kernel carefull these setting cost time 
     kernel_sizes         = [7,30]                # carefull these setting cost time 
-    smooth_type          = ['wiener','wiener']
+    smooth_type          = ['hamming','hamming']
     usedbinning          = [1,60]                # carefull these setting cost time 
     bound_sigma          = [3,3]
     stats_type           = ['madmean','madmean'] 
@@ -184,7 +188,7 @@ def main():
 
                     # go through all the time stamps
                     #
-                    for s in range(10):#range(spectrum_data.shape[0]):
+                    for s in range(spectrum_data.shape[0]):
 
                         fg_spec            = spectrum_data[s,1:] # exclude the DC term
                         cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)

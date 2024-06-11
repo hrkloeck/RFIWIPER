@@ -14,7 +14,6 @@ python CHECK_SURVEY_SCANS.py -h
 
 Usage: CHECK_SURVEY_SCANS.py [options]
 
-
 Options:
   -h, --help            show this help message and exit
   --DATA_FILE=DATAFILE  DATA - HDF5 file of the Prototyp
@@ -27,6 +26,9 @@ Options:
   --DO_FG_TIME_AUTO_SIGMA=AUTO_TIME_FG_SIGMA
                         automatically determine bad time use threshold.
                         default = 0 is off use e.g. = 5
+  --DO_FG_BOUNDARY_SIGMA=BOUND_SIGMA_INPUT
+                        if the spectram is maske to much at teh edges
+                        increase. [default = 3 sigma]
   --DOPLOT_FINAL_SPEC   Plot the final spectrum after Flagging
   --FINAL_SPEC_YRANGE=FSPEC_YRANGE
                         [ymin,ymax]

@@ -69,6 +69,7 @@ def main():
     donotflag                 = opts.donotflag
     dofgbyhand                = opts.hand_time_fg
     time_sigma                = opts.auto_time_fg_sigma
+    bound_sigma_input         = opts.bound_sigma_input
     doplot_final_spec         = opts.doplot_final_spec
     doplot_final_full_data    = opts.doplot_final_full_data
     fspec_yrange              = opts.fspec_yrange
@@ -136,15 +137,13 @@ def main():
 
     # Some hardcoded input
     #
-    splitting            = [0,6000,-1]           # split the spectrum into two sections
-    #kernel_sizes         = [100,500]            # setting for continous kernel carefull these setting cost time 
-    kernel_sizes         = [7,30]                # carefull these setting cost time 
+    splitting            = [0,6000,-1]             # split the spectrum into two sections
+    kernel_sizes         = [7,30]                  # carefull these setting cost time  # old setting: kernel_sizes         = [100,500]
     smooth_type          = ['wiener','wiener']
     usedbinning          = [100,61]                # carefull these setting cost time  need to check in RFI_lib is np splitt can generate 
-    bound_sigma          = [3,3]
     stats_type           = ['madmean','madmean'] 
     smooth_bound_kernel  = [31,31]
-    flag_on              = eval(use_data)        # only use noise diode off to generate flags ['ND0','ND1'] would do all
+
 
     # clean up maks for some some pattern 
     #
@@ -154,6 +153,10 @@ def main():
                       [1,0,0,0,0,1],\
                       [1,0,0,0,0,0,1],\
                       [1,0,0,0,1,0,0,0,1]]
+
+
+    bound_sigma          = [bound_sigma_input,bound_sigma_input] # if edges of the spectrum to much eaten away increase # old setting: bound_sigma          = [3,3]
+    flag_on              = eval(use_data)        # only use noise diode off to generate flags ['ND0','ND1'] would do all
 
     # --------------------------------------------
 
@@ -168,6 +171,9 @@ def main():
             freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
             #
             spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
+
+            spectrum_data = spectrum_data[:100]
+
             new_mask        = np.zeros(spectrum_data.shape).astype(bool)
 
             if toutput:
@@ -389,6 +395,8 @@ def main():
 
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
 
+                spectrum_data = spectrum_data[:100]
+
 
                 freq           = obsfile[d.replace('timestamp','frequency')][:]
 
@@ -534,6 +542,9 @@ def new_argument_parser():
 
     parser.add_option('--DO_FG_TIME_AUTO_SIGMA', dest='auto_time_fg_sigma', type=float,default=0,
                       help='automatically determine bad time use threshold. default = 0 is off use e.g. = 5')
+
+    parser.add_option('--DO_FG_BOUNDARY_SIGMA', dest='bound_sigma_input', type=float, default=3,
+                      help='if the spectram is maske to much at teh edges increase. [default = 3 sigma]')
 
     parser.add_option('--DOPLOT_FINAL_SPEC', dest='doplot_final_spec', action='store_true',
                       default=False,help='Plot the final spectrum after Flagging')

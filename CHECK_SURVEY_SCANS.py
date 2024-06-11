@@ -26,6 +26,10 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from time import process_time
 import RFI_LIB_SCANS as RFIL
+# import heat from submodule
+import sys
+sys.path.append("heat/")
+import heat as ht
 
 # use graphviz to plot the flowchart
 import graphviz

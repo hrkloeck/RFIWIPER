@@ -172,8 +172,6 @@ def main():
             #
             spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
 
-            spectrum_data = spectrum_data[:100]
-
             new_mask        = np.zeros(spectrum_data.shape).astype(bool)
 
             if toutput:
@@ -394,9 +392,6 @@ def main():
                     print('\tgenerate plot for : ',d.replace('timestamp',''))
 
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
-
-                spectrum_data = spectrum_data[:100]
-
 
                 freq           = obsfile[d.replace('timestamp','frequency')][:]
 

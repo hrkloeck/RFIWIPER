@@ -304,7 +304,7 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
 def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx=0,mtque=None,njobs=1):
     """
-    specially for doing single azimuthe scans
+    specially for doing single azimuth scans
     """
 
     from time import process_time
@@ -492,22 +492,6 @@ def clean_up_1d_mask(mask,clean_bins=[[1,0,1]],setvalue=1):
 
     return inputmask.astype(bool)
 
-
-def clean_up_1d_maskold(mask,bins=[[True,False,True]],setvalue=True):
-    """
-    just clean up single entries, this takes for ages! sliding window mask matching!
-    """
-    from copy import deepcopy
-    inputmask = deepcopy(mask)
-
-    for k in range(len(bins)):
-        for i in range(len(inputmask)-len(bins[k])):
-                isequal = inputmask[i:i+len(bins[k])] == bins[k]
-                        
-                if np.cumsum(isequal.astype(int))[-1] == len(bins[k]):
-                    inputmask[i:i+len(bins[k])-1] = setvalue
-
-    return inputmask
 
 
 def checkerstats(data,split,stats_type):

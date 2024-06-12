@@ -76,6 +76,7 @@ def main():
     doplot_with_invert_mask   = opts.invert_mask
     fspec_yrange              = opts.fspec_yrange
     pltsave                   = opts.pltsave
+    savefinalspectrum         = opts.savefinalspectrum
     reset_flag                = opts.reset_flag
     change_flag               = opts.change_flag
     savemask                  = opts.savemask
@@ -397,6 +398,10 @@ def main():
         if toutput:
             print('\n   === Generates 1d Spectrum plots === \n')
 
+        # Store the final spectra to be optional saved
+        #
+        plt_final_spectra_data = {}
+
         # Here does the plotting of the data
         #
         import matplotlib.pyplot as plt
@@ -424,6 +429,16 @@ def main():
                 spectrum_std   = fullmask_data.std(axis=0)
 
 
+                # safe the spectra in dic
+                #
+                if len(savefinalspectrum) > 0:
+                    plt_final_spectra_data[d.replace('timestamp','')] = {}
+                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mean'] = spectrum_mean
+                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_std']  = spectrum_std
+                    plt_final_spectra_data[d.replace('timestamp','')]['freq']          = freq
+ 
+
+
                 # print the spectrum
                 fig, ax = plt.subplots()
                 plt.title('obsid: '+str(obs_id)+' '+d.replace('timestamp',''))
@@ -444,6 +459,12 @@ def main():
 
                 plt.close()
 
+
+        if len(savefinalspectrum) > 0:
+            if toutput:
+                print('\n   === Save final spectra into a numpy-z file ',savefinalspectrum,' === \n')
+
+            np.savez(savefinalspectrum,**plt_final_spectra_data)
 
 
     # ---------------------------------------------------------------------------------------------
@@ -707,6 +728,9 @@ def new_argument_parser():
 
     parser.add_option('--DOSAVEMASK', dest='savemask',type=str,default='',
                       help='Save the mask into numpy npz file.')
+
+    parser.add_option('--DOSAVEFINALSPECTRUM', dest='savefinalspectrum', type=str,default='',
+                      help='Safe the final 1d spectra as numpy npz file. [works only with --DOPLOT_FINAL_SPEC]')
 
     parser.add_option('--DOLOADMASK', dest='loadmask', type=str,default='',
                       help='Upload the mask.')

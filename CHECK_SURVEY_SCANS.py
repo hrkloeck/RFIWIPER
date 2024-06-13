@@ -436,7 +436,8 @@ def main():
                     plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mean'] = spectrum_mean
                     plt_final_spectra_data[d.replace('timestamp','')]['spectrum_std']  = spectrum_std
                     plt_final_spectra_data[d.replace('timestamp','')]['freq']          = freq
- 
+                    plt_final_spectra_data[d.replace('timestamp','')]['obs_id']        = obs_id
+                    plt_final_spectra_data[d.replace('timestamp','')]['time_data']     = time_data
 
 
                 # print the spectrum

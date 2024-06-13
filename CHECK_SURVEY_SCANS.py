@@ -158,8 +158,7 @@ def main():
     
     # smoothing process of the masking function
     #
-    #smooth_type          = ['wiener','wiener']
-    smooth_type          = ['hamming','hamming']                 # Heat backend supports only 'hamming' for now
+    smooth_type          = ['wiener','wiener']
     #
     # kernel_sizes and kernel_sequence_type for this is defined below
 
@@ -321,6 +320,9 @@ def main():
                         #
                         if heat_backend:
                             print('Using Heat backend')
+                            # Heat backend supports only 'hamming' for now
+                            # TODO: implement support for other window functions
+                            smooth_type = ['hamming','hamming']                 
                             new_mask = ht.array(new_mask, split=0)
                             fg_spectra = ht.array(spectrum_data[:,1:], split=0) # exclude the DC term for the FG estimates
 

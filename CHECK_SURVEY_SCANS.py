@@ -158,9 +158,10 @@ def main():
     
     # smoothing process of the masking function
     #
-    smooth_type          = ['wiener','wiener']
+    #smooth_type          = ['wiener','wiener']
+    smooth_type          = ['hamming','hamming']                 # Heat backend supports only 'hamming' for now
     #
-    # kernel_sizes and kernel_sequence_type for this is defined bellow
+    # kernel_sizes and kernel_sequence_type for this is defined below
 
 
     # clean up mask of some pattern 
@@ -319,6 +320,7 @@ def main():
                         # go through all the time stamps
                         #
                         if heat_backend:
+                            print('Using Heat backend')
                             new_mask = ht.array(new_mask, split=0)
                             fg_spectra = ht.array(spectrum_data[:,1:], split=0) # exclude the DC term for the FG estimates
 
@@ -329,8 +331,9 @@ def main():
                             cleanup_spectra_mask[time_is_flagged] = False
 
                             # time the flagging
+                            print('Heat backend: starting flagging')
                             fg_t = process_time()
-                            final_mask = RFIL.flag_spec_by_smoothing(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins)
+                            final_mask = RFIL.flag_spec_by_smoothing_ht(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins)
                             new_mask = final_mask # TODO: this is probably unnecessary  
                             if toutput:
                                 elapsed_time = process_time() - fg_t

@@ -14,7 +14,6 @@ python CHECK_SURVEY_SCANS.py -h
 
 Usage: CHECK_SURVEY_SCANS.py [options]
 
-
 Options:
   -h, --help            show this help message and exit
   --DATA_FILE=DATAFILE  DATA - HDF5 file of the Prototyp
@@ -45,11 +44,17 @@ Options:
   --RESET_FLAG          Switch to clear all mask
   --DOSAVEMASK=SAVEMASK
                         Save the mask into numpy npz file.
+  --DOSAVEFINALSPECTRUM=SAVEFINALSPECTRUM
+                        Safe the final 1d spectra as numpy npz file. [works
+                        only with --DOPLOT_FINAL_SPEC]
   --DOLOADMASK=LOADMASK
                         Upload the mask.
   --DONOTCPUS           Switch off using multiple CPUs on the maschine
   --USENCPUS=USENCPUS   Define the number of CPUs to use
   --SILENCE             Switch off all output
+  --DO_RFI_REPORT=DO_RFI_REPORT
+                        provides info and SPWD plots. Input is number of SPWD
+                        [default = -1, use e.g. 8]
   --HELP                Show info on input
 
 ```
@@ -106,10 +111,7 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 
 ```
 
-python -W ignore CHECK_SURVEY_SCANS.py
---DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5
---DO_FG_TIME_AUTO_SIGMA=5 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC
---DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK --DONOTCPUS
+python -W ignore CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DO_FG_TIME_AUTO_SIGMA=5 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK --DONOTCPUS
 
 ```
 

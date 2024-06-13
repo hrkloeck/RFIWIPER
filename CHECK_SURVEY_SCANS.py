@@ -91,6 +91,8 @@ def main():
     donotncpus                = opts.donotncpus
     toutput                   = opts.toutput
     usencpus                  = opts.usencpus
+    # use Heat as backend
+    heat_backend              = opts.heat_backend
 
 
 
@@ -314,30 +316,48 @@ def main():
 
                         # go through all the time stamps
                         #
-                        for s in range(spectrum_data.shape[0]):
+                        if heat_backend:
+                            new_mask = ht.array(new_mask, split=0)
+                            fg_spectra = ht.array(spectrum_data[:,1:], split=0) # exclude the DC term for the FG estimates
 
-                            fg_spec            = spectrum_data[s,1:] # exclude the DC term for the FG estimates
-                            
-                            # check if time has been flagged
-                            #
-                            check_time_fg = np.sum(new_mask[s].astype(int))
-                            if check_time_fg != new_mask.shape[1]:                                        
-                                cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
-                            else:
-                                cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
+                            # check what time has been flagged
+                            check_time_fg = ht.sum(new_mask.astype(ht.int), axis=1)
+                            cleanup_spectra_mask = ht.ones(fg_spectra.shape, split=0).astype(ht.bool)
+                            time_is_flagged = check_time_fg != new_mask.shape[1]
+                            cleanup_spectra_mask[time_is_flagged] = False
 
-                            # check timeing of process
-                            fg_t               = process_time()
-
-                            final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
-                                                                                 smooth_type,usedbinning,bound_sigma,stats_type,\
-                                                                                 smooth_bound_kernel,clean_bins)
-                            new_mask[s][1:]    = final_sp_mask
-
+                            # time the flagging
+                            fg_t = process_time()
+                            final_mask = RFIL.flag_spec_by_smoothing(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins)
+                            new_mask = final_mask # TODO: this is probably unnecessary  
                             if toutput:
-                                # do some time measures
                                 elapsed_time = process_time() - fg_t
-                                print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
+                                print('Heat backend: time uses ', elapsed_time, ' ', d.replace('timestamp', ''))
+                        else:
+                            for s in range(spectrum_data.shape[0]):
+
+                                fg_spec            = spectrum_data[s,1:] # exclude the DC term for the FG estimates
+                                
+                                # check if time has been flagged
+                                #
+                                check_time_fg = np.sum(new_mask[s].astype(int))
+                                if check_time_fg != new_mask.shape[1]:                                        
+                                    cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+                                else:
+                                    cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
+
+                                # check timeing of process
+                                fg_t               = process_time()
+
+                                final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
+                                                                                    smooth_type,usedbinning,bound_sigma,stats_type,\
+                                                                                    smooth_bound_kernel,clean_bins)
+                                new_mask[s][1:]    = final_sp_mask
+
+                                if toutput:
+                                    # do some time measures
+                                    elapsed_time = process_time() - fg_t
+                                    print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
 
 
             full_new_mask[d.replace('timestamp','')]      = new_mask
@@ -620,7 +640,9 @@ def new_argument_parser():
 
     parser.add_option('--HELP', dest='help', action='store_true',
                       default=False,help='Show info on input')
-
+    # if this option is passed, `heat_backend` is set to True and the heat package is used as backend for parallelism
+    parser.add_option('--HEAT_BACKEND', dest='heat_backend', action='store_true',
+                      default=False, help='Use Heat as backend for parallelism')
     return parser
 
 

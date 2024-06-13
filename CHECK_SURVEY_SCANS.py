@@ -76,6 +76,7 @@ def main():
     doplot_with_invert_mask   = opts.invert_mask
     fspec_yrange              = opts.fspec_yrange
     pltsave                   = opts.pltsave
+    savefinalspectrum         = opts.savefinalspectrum
     reset_flag                = opts.reset_flag
     change_flag               = opts.change_flag
     savemask                  = opts.savemask
@@ -83,7 +84,7 @@ def main():
     donotncpus                = opts.donotncpus
     toutput                   = opts.toutput
     usencpus                  = opts.usencpus
-
+    do_rfi_report             = opts.do_rfi_report
 
 
     # define hat to plot
@@ -397,6 +398,10 @@ def main():
         if toutput:
             print('\n   === Generates 1d Spectrum plots === \n')
 
+        # Store the final spectra to be optional saved
+        #
+        plt_final_spectra_data = {}
+
         # Here does the plotting of the data
         #
         import matplotlib.pyplot as plt
@@ -424,6 +429,16 @@ def main():
                 spectrum_std   = fullmask_data.std(axis=0)
 
 
+                # safe the spectra in dic
+                #
+                if len(savefinalspectrum) > 0:
+                    plt_final_spectra_data[d.replace('timestamp','')] = {}
+                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mean'] = spectrum_mean
+                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_std']  = spectrum_std
+                    plt_final_spectra_data[d.replace('timestamp','')]['freq']          = freq
+ 
+
+
                 # print the spectrum
                 fig, ax = plt.subplots()
                 plt.title('obsid: '+str(obs_id)+' '+d.replace('timestamp',''))
@@ -444,6 +459,12 @@ def main():
 
                 plt.close()
 
+
+        if len(savefinalspectrum) > 0:
+            if toutput:
+                print('\n   === Save final spectra into a numpy-z file ',savefinalspectrum,' === \n')
+
+            np.savez(savefinalspectrum,**plt_final_spectra_data)
 
 
     # ---------------------------------------------------------------------------------------------
@@ -500,6 +521,116 @@ def main():
     #
     # ---------------------------------------------------------------------------------------------
 
+
+
+
+    # ---------------------------------------------------------------------------------------------
+    # Do RFI report 
+    # ---------------------------------------------------------------------------------------------
+    #
+    if do_rfi_report > 0 :
+
+        # define a range to plot (can be change in the input)
+        #
+        plt_report_sigma = 15
+
+        if toutput:
+            print('\n   === Generates report Information and 1d Spectrum plots === \n')
+
+        # Here does the plotting of the data
+        #
+        import matplotlib.pyplot as plt
+        import matplotlib
+        import matplotlib.ticker as tck
+        from matplotlib.offsetbox import AnchoredText
+        #
+        for d in timestamp_keys:
+
+            if RFIL.str_in_strlist(d,plot_type):
+
+                
+                print('\t = Observation information')
+                print('\t\t DC-term excluded')
+                
+                print('\t\t - Obs id: ',obs_id)
+
+                # Some general info 
+                time_range  = Time([time_data[0],time_data[-1]],format='unix')
+                az          = obsfile[d.replace('timestamp','azimuth')][:]
+                el          = obsfile[d.replace('timestamp','elevation')][:]
+
+                print('\t\t - timerange: ',time_range.to_value('isot'))
+                print('\t\t - azimut range: ',min(az),max(az))
+                print('\t\t - elevation range: ',min(el),max(el))
+
+
+                if toutput:
+                    print('\tgenerate report for : ',d.replace('timestamp',''))
+
+
+                spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:,1:]
+                freq           = obsfile[d.replace('timestamp','frequency')][1:]
+
+                if doplot_with_invert_mask:
+                    f_mask         = np.invert(final_mask[d.replace('timestamp','')])[:,1:]
+                else:
+                    f_mask         = final_mask[d.replace('timestamp','')][:,1:]
+
+
+                if (len(freq)%do_rfi_report) != 0:
+                    print('\nCAUTION \n\nThe setting produced sub-arrays with no equal sizes.')
+                    print('Subrray size is and used binning parameter ',len(freq),do_rfi_report)
+                    print('Change usedbinning parameter in main programme\n\n')
+                    sys.exit(-1)
+
+
+                # split the data and the mask into sub-sections
+                #
+                sp_spectrum_data   = np.array_split(spectrum_data,do_rfi_report,axis=1)
+                sp_freq            = np.array_split(freq,do_rfi_report)
+                sp_f_mask          = np.array_split(f_mask,do_rfi_report,axis=1)
+
+
+
+                for sp in range(len(sp_freq)):
+
+
+                    fullmask_data  = ma.masked_array(sp_spectrum_data[sp],mask=sp_f_mask[sp],fill_value=np.nan)
+
+                    spectrum_mean  = fullmask_data.mean(axis=0)
+                    spectrum_std   = fullmask_data.std(axis=0)
+
+                    plt_mean       = spectrum_mean.mean()    
+                    plt_std        = spectrum_std.std()   
+
+                     
+                    # print the spectrum
+                    fig, ax = plt.subplots()
+                    plt.title('obsid: '+str(obs_id)+' SPWD['+str(sp)+'] '+d.replace('timestamp',''))
+                    ax.errorbar(sp_freq[sp],spectrum_mean,yerr=spectrum_std,marker='.',ecolor = 'r',alpha=0.3)
+                    ax.set_xlabel('frequency [Hz]')
+                    ax.set_ylabel('mean of data [Jy]')
+                    ax.xaxis.set_minor_locator(tck.AutoMinorLocator())
+
+
+                    anchored_text = AnchoredText('mean,std '+str('%3.2e'%plt_mean)+', '+str('%3.2e'%plt_std), loc=2)
+                    ax.add_artist(anchored_text)
+
+                    plt_fspec_yrange = eval(fspec_yrange)
+                    if max(plt_fspec_yrange) != 0 or min(plt_fspec_yrange) != 0:
+                        ax.set_ylim(*plt_fspec_yrange)
+                    else:
+                        ax.set_ylim([plt_mean-plt_report_sigma*plt_std,plt_mean+plt_report_sigma*plt_std])
+
+
+                    if pltsave:
+                        plt_fname = data_file.replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC'+'_SPWD'+str(sp)
+                        plt_fname = filenamecounter(plt_fname,extention='.png')
+                        fig.savefig(plt_fname,dpi=DPI)
+                    else:
+                        plt.show()
+
+                    plt.close()
 
 
     # ---------------------------------------------------------------------------------------------
@@ -598,6 +729,9 @@ def new_argument_parser():
     parser.add_option('--DOSAVEMASK', dest='savemask',type=str,default='',
                       help='Save the mask into numpy npz file.')
 
+    parser.add_option('--DOSAVEFINALSPECTRUM', dest='savefinalspectrum', type=str,default='',
+                      help='Safe the final 1d spectra as numpy npz file. [works only with --DOPLOT_FINAL_SPEC]')
+
     parser.add_option('--DOLOADMASK', dest='loadmask', type=str,default='',
                       help='Upload the mask.')
 
@@ -609,6 +743,9 @@ def new_argument_parser():
 
     parser.add_option('--SILENCE', dest='toutput', action='store_false',
                       default=True,help='Switch off all output')
+
+    parser.add_option('--DO_RFI_REPORT', dest='do_rfi_report', type=int, default=-1,
+                      help='provides info and SPWD plots. Input is number of SPWD [default = -1, use e.g. 8]')
 
     parser.add_option('--HELP', dest='help', action='store_true',
                       default=False,help='Show info on input')

@@ -602,7 +602,7 @@ def main():
                     spectrum_std   = fullmask_data.std(axis=0)
 
                     plt_mean       = spectrum_mean.mean()    
-                    plt_std        = spectrum_std.std()   
+                    plt_std        = spectrum_mean.std()   
 
                      
                     # print the spectrum

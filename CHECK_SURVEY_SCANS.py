@@ -440,12 +440,20 @@ def main():
                     plt_final_spectra_data[d.replace('timestamp','')]['time_data']     = time_data
 
 
+                plt_info_mean      = spectrum_mean.mean()    
+                plt_info_std       = spectrum_mean.std() 
+
                 # print the spectrum
                 fig, ax = plt.subplots()
                 plt.title('obsid: '+str(obs_id)+' '+d.replace('timestamp',''))
                 ax.errorbar(freq,spectrum_mean,yerr=spectrum_std,marker='.',ecolor = 'r',alpha=0.3)
                 ax.set_xlabel('frequency [Hz]')
                 ax.set_ylabel('mean of data [Jy]')
+                ax.xaxis.set_minor_locator(tck.AutoMinorLocator())
+
+                anchored_text = AnchoredText('mean,std '+str('%3.2e'%plt_info_mean)+', '+str('%3.2e'%plt_info_std), loc=1)
+                ax.add_artist(anchored_text)
+
 
                 plt_fspec_yrange = eval(fspec_yrange)
                 if max(plt_fspec_yrange) != 0 or min(plt_fspec_yrange) != 0:
@@ -614,7 +622,7 @@ def main():
                     ax.xaxis.set_minor_locator(tck.AutoMinorLocator())
 
 
-                    anchored_text = AnchoredText('mean,std '+str('%3.2e'%plt_mean)+', '+str('%3.2e'%plt_std), loc=2)
+                    anchored_text = AnchoredText('mean,std '+str('%3.2e'%plt_mean)+', '+str('%3.2e'%plt_std), loc=1)
                     ax.add_artist(anchored_text)
 
                     plt_fspec_yrange = eval(fspec_yrange)

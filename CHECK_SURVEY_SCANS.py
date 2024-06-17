@@ -343,20 +343,36 @@ def main():
         print(' Full FG time needed ',full_fg_elapsed_time,' ')
 
     # ---------------------------------------------------------------------------------------------
-    # Merge the mask into a single one
+    # Merge the mask into a single one ONLY IF BOTH CHANNELS ARE EQUAL
     # ---------------------------------------------------------------------------------------------
 
     keys = full_new_mask.keys()
 
-    final_maskcomb = copy.copy(new_mask)
+    check_shapes = 1
+    for i,k in enumerate(keys):
+        mask_shape = full_new_mask[k].shape
+        if i == 0:
+            t_shape    = mask_shape[0]
+            f_shape    = mask_shape[1]
+        else:
+            if t_shape - mask_shape[0] != 0:
+                check_shapes = -1
+            if f_shape - mask_shape[1] != 0:
+                check_shapes = -1
 
-    for k in keys:
-            final_maskcomb = np.logical_or(full_new_mask[k],final_maskcomb)
+    if check_shapes == 1:
+        final_maskcomb = copy.copy(new_mask)
 
-    final_mask = {}
-    for d in timestamp_keys:
-            final_mask[d.replace('timestamp','')] = final_maskcomb
+        for k in keys:
+                final_maskcomb = np.logical_or(full_new_mask[k],final_maskcomb)
 
+        final_mask = {}
+        for d in timestamp_keys:
+                final_mask[d.replace('timestamp','')] = final_maskcomb
+    else:
+        print('CAUTON both channels ahev different dimensions')
+        for d in timestamp_keys:
+                final_mask[d.replace('timestamp','')] = full_new_mask[d.replace('timestamp','')]
 
     # ---------------------------------------------------------------------------------------------
     # Save the mask
@@ -720,10 +736,10 @@ def new_argument_parser():
     parser.add_option('--FINAL_SPEC_YRANGE', dest='fspec_yrange', type=str,default='[0,0]',
                       help='[ymin,ymax]')
 
-    parser.add_option('--DOPLOT_FINAL_WATERFALL', dest='invert_mask', action='store_true',
+    parser.add_option('--DOPLOT_FINAL_WATERFALL', dest='doplot_final_full_data', action='store_true',
                       default=False,help='Plot the final waterfall after Flagging')
 
-    parser.add_option('--DOPLOT_WITH_INVERTED_MASK', dest='doplot_final_full_data', action='store_true',
+    parser.add_option('--DOPLOT_WITH_INVERTED_MASK', dest='invert_mask', action='store_true',
                       default=False,help='Plot the final plots using an inverted mask')
 
     parser.add_option('--DOSAVEPLOT', dest='pltsave', action='store_true',

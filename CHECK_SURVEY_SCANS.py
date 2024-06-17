@@ -370,7 +370,8 @@ def main():
         for d in timestamp_keys:
                 final_mask[d.replace('timestamp','')] = final_maskcomb
     else:
-        print('CAUTON both channels ahev different dimensions')
+        print('CAUTON both channels have different dimensions')
+        final_mask = {}
         for d in timestamp_keys:
                 final_mask[d.replace('timestamp','')] = full_new_mask[d.replace('timestamp','')]
 
@@ -730,7 +731,7 @@ def new_argument_parser():
                       help='automatically determine bad time use threshold. default = 0 is off use e.g. = 5')
 
     parser.add_option('--DO_FG_BOUNDARY_SIGMA', dest='bound_sigma_input', type=float, default=3,
-                      help='if the spectram is maske to much at teh edges increase. [default = 3 sigma]')
+                      help='if the spectram is maske to much at the edges increase. [default = 3 sigma]')
 
     parser.add_option('--DOPLOT_FINAL_SPEC', dest='doplot_final_spec', action='store_true',
                       default=False,help='Plot the final spectrum after Flagging')

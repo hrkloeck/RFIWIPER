@@ -422,6 +422,8 @@ def main():
         #
         import matplotlib.pyplot as plt
         import matplotlib
+        import matplotlib.ticker as tck
+        from matplotlib.offsetbox import AnchoredText
         #
         for d in timestamp_keys:
 

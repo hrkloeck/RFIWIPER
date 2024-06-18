@@ -70,6 +70,7 @@ def main():
     flagprocessing            = opts.flagprocessing
     dofgbyhand                = opts.hand_time_fg
     time_sigma                = opts.auto_time_fg_sigma
+    saturation_fg_sigma       = opts.saturation_fg_sigma
     bound_sigma_input         = opts.bound_sigma_input
     doplot_final_spec         = opts.doplot_final_spec
     doplot_final_full_data    = opts.doplot_final_full_data
@@ -85,7 +86,7 @@ def main():
     toutput                   = opts.toutput
     usencpus                  = opts.usencpus
     do_rfi_report             = opts.do_rfi_report
-
+    do_rfi_report_sigma       = opts.do_rfi_report_sigma
 
     # define hat to plot
     #
@@ -116,7 +117,6 @@ def main():
     spectrum_keys        = findkeys(obsfile,keys=['scan','spectrum'],exactmatch=True)
     # #########  
     #
-
 
 
     # ---------------------------------------------------------------------------------------------
@@ -208,6 +208,8 @@ def main():
 
             # ---------------------------------------------------------------------------------------------
             # spectrum flagging individual times (takes care of ampl) DO NOT USE THE NOISE DIODE DATA HERE
+            #
+            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
             # ---------------------------------------------------------------------------------------------
             if time_sigma != 0:
 
@@ -223,7 +225,7 @@ def main():
             # ---------------------------------------------------------------------------------------------
             # spectrum flagging by input 
             #
-            # (this will be ignored in the spectrum flagging, but is present in the final mask)
+            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
             # ---------------------------------------------------------------------------------------------
 
             if len(dofgbyhand) > 0:
@@ -241,6 +243,24 @@ def main():
                         print('\t\t timerange: ',time_range.to_value('isot'))
                         print('\t\t azimut range: ',az[dofgbyhand[i][0]],az[dofgbyhand[i][1]])
                         print('\t\t elevation range: ',el[dofgbyhand[i][0]],el[dofgbyhand[i][1]])
+
+
+            # ---------------------------------------------------------------------------------------------
+            # spectrum flagging by saturation information 
+            #
+            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
+            # ---------------------------------------------------------------------------------------------
+
+            if saturation_fg_sigma > 0:
+
+                satur = obsfile[d.replace('timestamp','saturated_samples')][:]
+                satur = satur.flatten()
+
+                time_mask_sat = RFIL.boundary_mask_data(satur,satur,sigma=saturation_fg_sigma,stats_type='madmedian',do_info=False).astype(int)
+
+                for i in range(len(time_mask_sat)):
+                        if time_mask_sat[i] == 1:
+                            new_mask[i,:] = True
 
 
             # ---------------------------------------------------------------------------------------------
@@ -343,20 +363,37 @@ def main():
         print(' Full FG time needed ',full_fg_elapsed_time,' ')
 
     # ---------------------------------------------------------------------------------------------
-    # Merge the mask into a single one
+    # Merge the mask into a single one ONLY IF BOTH CHANNELS ARE EQUAL
     # ---------------------------------------------------------------------------------------------
 
     keys = full_new_mask.keys()
 
-    final_maskcomb = copy.copy(new_mask)
+    check_shapes = 1
+    for i,k in enumerate(keys):
+        mask_shape = full_new_mask[k].shape
+        if i == 0:
+            t_shape    = mask_shape[0]
+            f_shape    = mask_shape[1]
+        else:
+            if t_shape - mask_shape[0] != 0:
+                check_shapes = -1
+            if f_shape - mask_shape[1] != 0:
+                check_shapes = -1
 
-    for k in keys:
-            final_maskcomb = np.logical_or(full_new_mask[k],final_maskcomb)
+    if check_shapes == 1:
+        final_maskcomb = copy.copy(new_mask)
 
-    final_mask = {}
-    for d in timestamp_keys:
-            final_mask[d.replace('timestamp','')] = final_maskcomb
+        for k in keys:
+                final_maskcomb = np.logical_or(full_new_mask[k],final_maskcomb)
 
+        final_mask = {}
+        for d in timestamp_keys:
+                final_mask[d.replace('timestamp','')] = final_maskcomb
+    else:
+        print('CAUTON both channels have different dimensions')
+        final_mask = {}
+        for d in timestamp_keys:
+                final_mask[d.replace('timestamp','')] = full_new_mask[d.replace('timestamp','')]
 
     # ---------------------------------------------------------------------------------------------
     # Save the mask
@@ -406,14 +443,12 @@ def main():
         #
         import matplotlib.pyplot as plt
         import matplotlib
+        import matplotlib.ticker as tck
+        from matplotlib.offsetbox import AnchoredText
         #
         for d in timestamp_keys:
 
             if RFIL.str_in_strlist(d,plot_type):
-
-
-                if toutput:
-                    print('\tgenerate plot for : ',d.replace('timestamp',''))
 
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
 
@@ -423,6 +458,12 @@ def main():
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')]
+
+                fg_info = int(100*np.sum(f_mask.astype(int))/np.prod(f_mask.shape))
+                
+                if toutput:
+                    print('\tmask:               ',d.replace('timestamp',''),' ',fg_info,' %')
+                    print('\tgenerate plot for : ',d.replace('timestamp',''))
 
                 fullmask_data  = ma.masked_array(spectrum_data,mask=f_mask,fill_value=np.nan)
                 spectrum_mean  = fullmask_data.mean(axis=0)
@@ -436,8 +477,12 @@ def main():
                     plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mean'] = spectrum_mean
                     plt_final_spectra_data[d.replace('timestamp','')]['spectrum_std']  = spectrum_std
                     plt_final_spectra_data[d.replace('timestamp','')]['freq']          = freq
- 
+                    plt_final_spectra_data[d.replace('timestamp','')]['obs_id']        = obs_id
+                    plt_final_spectra_data[d.replace('timestamp','')]['time_data']     = time_data
 
+
+                plt_info_mean      = spectrum_mean.mean()    
+                plt_info_std       = spectrum_mean.std() 
 
                 # print the spectrum
                 fig, ax = plt.subplots()
@@ -445,6 +490,11 @@ def main():
                 ax.errorbar(freq,spectrum_mean,yerr=spectrum_std,marker='.',ecolor = 'r',alpha=0.3)
                 ax.set_xlabel('frequency [Hz]')
                 ax.set_ylabel('mean of data [Jy]')
+                ax.xaxis.set_minor_locator(tck.AutoMinorLocator())
+
+                anchored_text = AnchoredText('mean,std '+str('%3.2e'%plt_info_mean)+', '+str('%3.2e'%plt_info_std), loc=1)
+                ax.add_artist(anchored_text)
+
 
                 plt_fspec_yrange = eval(fspec_yrange)
                 if max(plt_fspec_yrange) != 0 or min(plt_fspec_yrange) != 0:
@@ -485,8 +535,6 @@ def main():
 
             if RFIL.str_in_strlist(d,plot_type):
 
-                if toutput:
-                    print('\tgenerate plot for : ',d.replace('timestamp',''))
 
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
 
@@ -494,6 +542,13 @@ def main():
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')]
+
+
+                fg_info = int(100*np.sum(f_mask.astype(int))/np.prod(f_mask.shape))
+                
+                if toutput:
+                    print('\tmask:               ',d.replace('timestamp',''),' ',fg_info,' %')
+                    print('\tgenerate plot for : ',d.replace('timestamp',''))
 
 
                 # print the waterfall plot
@@ -532,7 +587,7 @@ def main():
 
         # define a range to plot (can be change in the input)
         #
-        plt_report_sigma = 15
+        plt_report_sigma = do_rfi_report_sigma
 
         if toutput:
             print('\n   === Generates report Information and 1d Spectrum plots === \n')
@@ -564,10 +619,6 @@ def main():
                 print('\t\t - elevation range: ',min(el),max(el))
 
 
-                if toutput:
-                    print('\tgenerate report for : ',d.replace('timestamp',''))
-
-
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:,1:]
                 freq           = obsfile[d.replace('timestamp','frequency')][1:]
 
@@ -575,6 +626,13 @@ def main():
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])[:,1:]
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')][:,1:]
+
+
+                fg_info = int(100*np.sum(f_mask.astype(int))/np.prod(f_mask.shape))
+                
+                if toutput:
+                    print('\tmask:               ',d.replace('timestamp',''),' ',fg_info,' %')
+                    print('\tgenerate report for : ',d.replace('timestamp',''))
 
 
                 if (len(freq)%do_rfi_report) != 0:
@@ -601,7 +659,7 @@ def main():
                     spectrum_std   = fullmask_data.std(axis=0)
 
                     plt_mean       = spectrum_mean.mean()    
-                    plt_std        = spectrum_std.std()   
+                    plt_std        = spectrum_mean.std()   
 
                      
                     # print the spectrum
@@ -613,7 +671,7 @@ def main():
                     ax.xaxis.set_minor_locator(tck.AutoMinorLocator())
 
 
-                    anchored_text = AnchoredText('mean,std '+str('%3.2e'%plt_mean)+', '+str('%3.2e'%plt_std), loc=2)
+                    anchored_text = AnchoredText('mean,std '+str('%3.2e'%plt_mean)+', '+str('%3.2e'%plt_std), loc=1)
                     ax.add_artist(anchored_text)
 
                     plt_fspec_yrange = eval(fspec_yrange)
@@ -702,8 +760,11 @@ def new_argument_parser():
     parser.add_option('--DO_FG_TIME_AUTO_SIGMA', dest='auto_time_fg_sigma', type=float,default=0,
                       help='automatically determine bad time use threshold. default = 0 is off use e.g. = 5')
 
+    parser.add_option('--DO_FG_SATURATION_SIGMA', dest='saturation_fg_sigma', type=float,default=0,
+                      help='use the saturation information to flag. default = 0 is off use e.g. = 3')
+
     parser.add_option('--DO_FG_BOUNDARY_SIGMA', dest='bound_sigma_input', type=float, default=3,
-                      help='if the spectram is maske to much at teh edges increase. [default = 3 sigma]')
+                      help='if the spectrum is mask to much at the edges increase. [default = 3 sigma]')
 
     parser.add_option('--DOPLOT_FINAL_SPEC', dest='doplot_final_spec', action='store_true',
                       default=False,help='Plot the final spectrum after Flagging')
@@ -711,10 +772,10 @@ def new_argument_parser():
     parser.add_option('--FINAL_SPEC_YRANGE', dest='fspec_yrange', type=str,default='[0,0]',
                       help='[ymin,ymax]')
 
-    parser.add_option('--DOPLOT_FINAL_WATERFALL', dest='invert_mask', action='store_true',
+    parser.add_option('--DOPLOT_FINAL_WATERFALL', dest='doplot_final_full_data', action='store_true',
                       default=False,help='Plot the final waterfall after Flagging')
 
-    parser.add_option('--DOPLOT_WITH_INVERTED_MASK', dest='doplot_final_full_data', action='store_true',
+    parser.add_option('--DOPLOT_WITH_INVERTED_MASK', dest='invert_mask', action='store_true',
                       default=False,help='Plot the final plots using an inverted mask')
 
     parser.add_option('--DOSAVEPLOT', dest='pltsave', action='store_true',
@@ -746,6 +807,9 @@ def new_argument_parser():
 
     parser.add_option('--DO_RFI_REPORT', dest='do_rfi_report', type=int, default=-1,
                       help='provides info and SPWD plots. Input is number of SPWD [default = -1, use e.g. 8]')
+
+    parser.add_option('--DO_RFI_REPORT_SIGMA', dest='do_rfi_report_sigma', type=float, default=5,
+                      help='set the y-range of the SPWDs plots of the RFI report [default = 5]')
 
     parser.add_option('--HELP', dest='help', action='store_true',
                       default=False,help='Show info on input')

@@ -32,7 +32,7 @@ sys.path.append("heat/")
 import heat as ht
 
 # use graphviz to plot the flowchart
-import graphviz
+#import graphviz
 
 # ###################################################
 #

@@ -70,6 +70,7 @@ def main():
     flagprocessing            = opts.flagprocessing
     dofgbyhand                = opts.hand_time_fg
     time_sigma                = opts.auto_time_fg_sigma
+    saturation_fg_sigma       = opts.saturation_fg_sigma
     bound_sigma_input         = opts.bound_sigma_input
     doplot_final_spec         = opts.doplot_final_spec
     doplot_final_full_data    = opts.doplot_final_full_data
@@ -116,7 +117,6 @@ def main():
     spectrum_keys        = findkeys(obsfile,keys=['scan','spectrum'],exactmatch=True)
     # #########  
     #
-
 
 
     # ---------------------------------------------------------------------------------------------
@@ -208,6 +208,8 @@ def main():
 
             # ---------------------------------------------------------------------------------------------
             # spectrum flagging individual times (takes care of ampl) DO NOT USE THE NOISE DIODE DATA HERE
+            #
+            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
             # ---------------------------------------------------------------------------------------------
             if time_sigma != 0:
 
@@ -223,7 +225,7 @@ def main():
             # ---------------------------------------------------------------------------------------------
             # spectrum flagging by input 
             #
-            # (this will be ignored in the spectrum flagging, but is present in the final mask)
+            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
             # ---------------------------------------------------------------------------------------------
 
             if len(dofgbyhand) > 0:
@@ -241,6 +243,24 @@ def main():
                         print('\t\t timerange: ',time_range.to_value('isot'))
                         print('\t\t azimut range: ',az[dofgbyhand[i][0]],az[dofgbyhand[i][1]])
                         print('\t\t elevation range: ',el[dofgbyhand[i][0]],el[dofgbyhand[i][1]])
+
+
+            # ---------------------------------------------------------------------------------------------
+            # spectrum flagging by saturation information 
+            #
+            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
+            # ---------------------------------------------------------------------------------------------
+
+            if saturation_fg_sigma > 0:
+
+                satur = obsfile[d.replace('timestamp','saturated_samples')][:]
+                satur = satur.flatten()
+
+                time_mask_sat = RFIL.boundary_mask_data(satur,satur,sigma=saturation_fg_sigma,stats_type='madmedian',do_info=False).astype(int)
+
+                for i in range(len(time_mask_sat)):
+                        if time_mask_sat[i] == 1:
+                            new_mask[i,:] = True
 
 
             # ---------------------------------------------------------------------------------------------
@@ -740,8 +760,11 @@ def new_argument_parser():
     parser.add_option('--DO_FG_TIME_AUTO_SIGMA', dest='auto_time_fg_sigma', type=float,default=0,
                       help='automatically determine bad time use threshold. default = 0 is off use e.g. = 5')
 
+    parser.add_option('--DO_FG_SATURATION_SIGMA', dest='saturation_fg_sigma', type=float,default=0,
+                      help='use the saturation information to flag. default = 0 is off use e.g. = 3')
+
     parser.add_option('--DO_FG_BOUNDARY_SIGMA', dest='bound_sigma_input', type=float, default=3,
-                      help='if the spectram is maske to much at the edges increase. [default = 3 sigma]')
+                      help='if the spectrum is mask to much at the edges increase. [default = 3 sigma]')
 
     parser.add_option('--DOPLOT_FINAL_SPEC', dest='doplot_final_spec', action='store_true',
                       default=False,help='Plot the final spectrum after Flagging')

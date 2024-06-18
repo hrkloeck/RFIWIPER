@@ -49,8 +49,9 @@ Options:
                         only with --DOPLOT_FINAL_SPEC]
   --DOLOADMASK=LOADMASK
                         Upload the mask.
-  --DONOTCPUS           Switch off using multiple CPUs on the maschine
+  --DONOTCPUS           Switch off using multiple CPUs on the machine
   --USENCPUS=USENCPUS   Define the number of CPUs to use
+  --HEAT_BACKEND        Use the Heat backend for parallelization and GPU support
   --SILENCE             Switch off all output
   --DO_RFI_REPORT=DO_RFI_REPORT
                         provides info and SPWD plots. Input is number of SPWD

@@ -910,8 +910,7 @@ def clean_up_1d_mask_ht(mask,bins=[[True,False,True]],setvalue=True):
     setvalue : bool
         value to set the mask to. Default is True
     """
-    from copy import deepcopy
-    inputmask = deepcopy(mask)
+    inputmask = mask.copy()
 
     timestamps = inputmask.shape[0]
     channels = inputmask.shape[1]

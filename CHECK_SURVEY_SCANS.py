@@ -851,7 +851,7 @@ def new_argument_parser():
                       default=False,help='Show info on input')
     # if this option is passed, `heat_backend` is set to True and the heat package is used as backend for parallelism
     parser.add_option('--HEAT_BACKEND', dest='heat_backend', action='store_true',
-                      default=False, help='Use Heat as backend for parallelism')
+                      default=False, help='Use the Heat backend for parallelization and GPU support')
     return parser
 
 

@@ -85,7 +85,7 @@ def main():
     toutput                   = opts.toutput
     usencpus                  = opts.usencpus
     do_rfi_report             = opts.do_rfi_report
-
+    do_rfi_report_sigma       = opts.do_rfi_report_sigma
 
     # define hat to plot
     #
@@ -430,10 +430,6 @@ def main():
 
             if RFIL.str_in_strlist(d,plot_type):
 
-
-                if toutput:
-                    print('\tgenerate plot for : ',d.replace('timestamp',''))
-
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
 
                 freq           = obsfile[d.replace('timestamp','frequency')][:]
@@ -442,6 +438,12 @@ def main():
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')]
+
+                fg_info = int(100*np.sum(f_mask.astype(int))/np.prod(f_mask.shape))
+                
+                if toutput:
+                    print('\tmask:               ',d.replace('timestamp',''),' ',fg_info,' %')
+                    print('\tgenerate plot for : ',d.replace('timestamp',''))
 
                 fullmask_data  = ma.masked_array(spectrum_data,mask=f_mask,fill_value=np.nan)
                 spectrum_mean  = fullmask_data.mean(axis=0)
@@ -513,8 +515,6 @@ def main():
 
             if RFIL.str_in_strlist(d,plot_type):
 
-                if toutput:
-                    print('\tgenerate plot for : ',d.replace('timestamp',''))
 
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
 
@@ -522,6 +522,13 @@ def main():
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')]
+
+
+                fg_info = int(100*np.sum(f_mask.astype(int))/np.prod(f_mask.shape))
+                
+                if toutput:
+                    print('\tmask:               ',d.replace('timestamp',''),' ',fg_info,' %')
+                    print('\tgenerate plot for : ',d.replace('timestamp',''))
 
 
                 # print the waterfall plot
@@ -560,7 +567,7 @@ def main():
 
         # define a range to plot (can be change in the input)
         #
-        plt_report_sigma = 15
+        plt_report_sigma = do_rfi_report_sigma
 
         if toutput:
             print('\n   === Generates report Information and 1d Spectrum plots === \n')
@@ -592,10 +599,6 @@ def main():
                 print('\t\t - elevation range: ',min(el),max(el))
 
 
-                if toutput:
-                    print('\tgenerate report for : ',d.replace('timestamp',''))
-
-
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:,1:]
                 freq           = obsfile[d.replace('timestamp','frequency')][1:]
 
@@ -603,6 +606,13 @@ def main():
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])[:,1:]
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')][:,1:]
+
+
+                fg_info = int(100*np.sum(f_mask.astype(int))/np.prod(f_mask.shape))
+                
+                if toutput:
+                    print('\tmask:               ',d.replace('timestamp',''),' ',fg_info,' %')
+                    print('\tgenerate report for : ',d.replace('timestamp',''))
 
 
                 if (len(freq)%do_rfi_report) != 0:
@@ -774,6 +784,9 @@ def new_argument_parser():
 
     parser.add_option('--DO_RFI_REPORT', dest='do_rfi_report', type=int, default=-1,
                       help='provides info and SPWD plots. Input is number of SPWD [default = -1, use e.g. 8]')
+
+    parser.add_option('--DO_RFI_REPORT_SIGMA', dest='do_rfi_report_sigma', type=float, default=5,
+                      help='set the y-range of the SPWDs plots of the RFI report [default = 5]')
 
     parser.add_option('--HELP', dest='help', action='store_true',
                       default=False,help='Show info on input')

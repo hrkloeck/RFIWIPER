@@ -325,7 +325,6 @@ def main():
                             smooth_type = ['hamming','hamming']                 
                             new_mask = ht.array(new_mask, split=0)
                             fg_spectra = ht.array(spectrum_data[:,1:], split=0) # exclude the DC term for the FG estimates
-
                             # check what time has been flagged
                             check_time_fg = ht.sum(new_mask.astype(ht.int), axis=1)
                             cleanup_spectra_mask = ht.ones(fg_spectra.shape, split=0).astype(ht.bool)
@@ -341,8 +340,11 @@ def main():
                                 elapsed_time = process_time() - fg_t
                                 print('Heat backend: time uses ', elapsed_time, ' ', d.replace('timestamp', ''))
                         else:
+                            # time entire procedure
+                            fg_t               = process_time()
                             for s in range(spectrum_data.shape[0]):
-
+                                if toutput and s % 100 == 0:
+                                    print(f"{s}/{spectrum_data.shape[0]}")
                                 fg_spec            = spectrum_data[s,1:] # exclude the DC term for the FG estimates
                                 
                                 # check if time has been flagged
@@ -354,17 +356,17 @@ def main():
                                     cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
 
                                 # check timeing of process
-                                fg_t               = process_time()
+                                #fg_t               = process_time()
 
                                 final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
                                                                                     smooth_type,usedbinning,bound_sigma,stats_type,\
                                                                                     smooth_bound_kernel,clean_bins)
                                 new_mask[s][1:]    = final_sp_mask
 
-                                if toutput:
-                                    # do some time measures
-                                    elapsed_time = process_time() - fg_t
-                                    print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
+                            if toutput:
+                                # do some time measures
+                                elapsed_time = process_time() - fg_t
+                                print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
 
 
             full_new_mask[d.replace('timestamp','')]      = new_mask

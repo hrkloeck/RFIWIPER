@@ -22,6 +22,10 @@ import time
 import sys
 sys.path.append("heat/")
 import heat as ht
+# printing to stdout when running on the cluster (print() doesn't work)
+import logging
+logging.basicConfig(format='%(message)s')
+log = logging.getLogger(__name__)
 
 
 def data_stats(data,stats_type='mean',accur=100):
@@ -741,7 +745,7 @@ def kernel_sequence(kernel_sizes,kernel_sequence_type='middle_fast'):
                  kernel.append(3*i**2)
 
         elif kernel_sequence_type == 'fast':
-            kernel.append(2**i+1)
+            kernel.append(2**i + 1)
 
         else:
             # slow
@@ -847,7 +851,7 @@ def flag_smoothing_ht(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,ke
         start = time.perf_counter()
         sm_data   = batch_convolve_1d_data(spec,smooth_type=smooth_type,smooth_kernel=k)
         end = time.perf_counter()
-        print(f"Time to convolve with kernel size {k}: {end-start} seconds")
+        log.warning(f"Time to convolve with kernel size {k}: {end-start} seconds")
         # residuals
         resi_data = spec - sm_data
 
@@ -1031,7 +1035,7 @@ def checkerstats_ht(data, subspectra, stats_type, select=None):
         start = time.perf_counter()
         data_std       = mad_std(local_sp_data,axis=-1)
         end = time.perf_counter()
-        print(f"In checkerstats_ht: mad_std: {end - start:0.7f} seconds")
+        log.warning(f"In checkerstats_ht: mad_std: {end - start:0.7f} seconds")
 
     elif stats_type == 'madmedian':
         #

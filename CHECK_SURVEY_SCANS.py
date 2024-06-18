@@ -30,6 +30,11 @@ import RFI_LIB_SCANS as RFIL
 import sys
 sys.path.append("heat/")
 import heat as ht
+# printing to stdout when running on the cluster (print() doesn't work)
+import logging
+logging.basicConfig(format='%(message)s')
+log = logging.getLogger(__name__)
+
 
 # use graphviz to plot the flowchart
 #import graphviz
@@ -95,6 +100,9 @@ def main():
     usencpus                  = opts.usencpus
     # use Heat as backend
     heat_backend              = opts.heat_backend
+    if heat_backend:
+        # parallelism via mpirun call
+        donotncpus = True
 
     do_rfi_report             = opts.do_rfi_report
     do_rfi_report_sigma       = opts.do_rfi_report_sigma
@@ -133,6 +141,7 @@ def main():
     # ---------------------------------------------------------------------------------------------
     # Define how many cpu are used 
     # ---------------------------------------------------------------------------------------------
+
 
     if donotncpus == False:
         if usencpus < 0:
@@ -339,7 +348,7 @@ def main():
                         # go through all the time stamps
                         #
                         if heat_backend:
-                            print('Using Heat backend')
+                            log.warning('Using Heat backend')
                             # Heat backend supports only 'hamming' for now
                             # TODO: implement support for other window functions
                             smooth_type = ['hamming','hamming']                 
@@ -352,19 +361,19 @@ def main():
                             cleanup_spectra_mask[time_is_flagged] = False
 
                             # time the flagging
-                            print('Heat backend: starting flagging')
+                            log.warning('Heat backend: starting flagging')
                             fg_t = process_time()
                             final_mask = RFIL.flag_spec_by_smoothing_ht(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins)
                             new_mask = final_mask # TODO: this is probably unnecessary  
                             if toutput:
                                 elapsed_time = process_time() - fg_t
-                                print('Heat backend: time uses ', elapsed_time, ' ', d.replace('timestamp', ''))
+                                log.warning('Heat backend: time uses ', elapsed_time, ' ', d.replace('timestamp', ''))
                         else:
                             # time entire procedure
                             fg_t               = process_time()
                             for s in range(spectrum_data.shape[0]):
                                 if toutput and s % 100 == 0:
-                                    print(f"{s}/{spectrum_data.shape[0]}")
+                                    log.warning(f"{s}/{spectrum_data.shape[0]}")
                                 fg_spec            = spectrum_data[s,1:] # exclude the DC term for the FG estimates
                                 
                                 # check if time has been flagged
@@ -386,7 +395,7 @@ def main():
                             if toutput:
                                 # do some time measures
                                 elapsed_time = process_time() - fg_t
-                                print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
+                                log.warning(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
 
 
             full_new_mask[d.replace('timestamp','')]      = new_mask
@@ -396,7 +405,7 @@ def main():
     # determine the full fg time required 
     full_fg_elapsed_time = process_time() - full_fg_time
     if toutput:
-        print(' Full FG time needed ',full_fg_elapsed_time,' ')
+        log.warning(' Full FG time needed ',full_fg_elapsed_time,' ')
 
     # ---------------------------------------------------------------------------------------------
     # Merge the mask into a single one ONLY IF BOTH CHANNELS ARE EQUAL

@@ -317,10 +317,8 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
     # To get the upper and lower boundaries we used binned data and its statistics
     # 
-    print("boundary_range, usedbinning: ", usedbinning)
     stats_x_data,stats_x_datastd             = checkerstats(xdata,usedbinning,stats_type)
     stats_y_data,stats_y_datastd,stats_mask  = checkerstats_sel(ydata,usedbinning,ydata_mask,stats_type)
-        
 
     # determine a sigma boundary
     #
@@ -329,13 +327,6 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
     x_boundary_values = np.insert(x_boundary_values,0,xdata[0])
     x_boundary_values = np.insert(x_boundary_values,-1,xdata[-1])
     #
-    # VECTORIZED X BOUNDARY VALUES
-    # x range
-    #
-    # x_boundary_values = np.zeros((len(stats_x_data)+2,), dtype = np.array(stats_x_data).dtype)
-    # x_boundary_values[0] = xdata[0]
-    # x_boundary_values[-1] = xdata[-1]
-    # x_boundary_values[1:-1] = stats_x_data
        
     # amp values
     y_boundary_values_up  = stats_y_data + bound_sigma * stats_y_datastd
@@ -350,13 +341,9 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
     # Here check on the boundary 
     # 
-    #start = time.perf_counter()
-    boundary_stats_up   = data_stats(y_boundary_values_up,stats_type='median',accur=100)
-    boundary_stats_low  = data_stats(y_boundary_values_low,stats_type='median',accur=100)
-    #end = time.perf_counter()
-    #print(f"Time for data_stats : {end - start:0.7f} seconds")
-    #
-    #start = time.perf_counter()
+    boundary_stats_up  = data_stats(y_boundary_values_up,stats_type='median',accur=100)
+    boundary_stats_low = data_stats(y_boundary_values_low,stats_type='median',accur=100)
+
     if usedbinning > 10:
 
         if boundary_stats_up[0] != boundary_stats_up[1]:
@@ -368,8 +355,6 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
         
     else:
             bound_select         = np.zeros(len(y_boundary_values_low)).astype(bool)
-    #end = time.perf_counter()
-    #print(f"Time for bound_select : {end - start:0.7f} seconds")
 
     # case there are also bins the have been marked by 
     # checkerstats_selcheckerstats_sel
@@ -384,6 +369,7 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
     # Interpolate and convolve the boundary region 
     # of the data and use this to mark bad data
     #
+
     interp_boundary_up         = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],\
                                                np.array(y_boundary_values_up)[np.invert(bound_select)])
     # check timeing of process
@@ -391,15 +377,13 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
     interp_boundary_low        = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],\
                                                np.array(y_boundary_values_low)[np.invert(bound_select)])
     #
-    #start = time.perf_counter()
+
     if smooth_kernel > 3:
         boundary_up                = convolve_1d_data(interp_boundary_up,smooth_type='wiener',smooth_kernel=smooth_kernel)
         boundary_low               = convolve_1d_data(interp_boundary_low,smooth_type='wiener',smooth_kernel=smooth_kernel)
     else:
         boundary_up  = interp_boundary_up
         boundary_low = interp_boundary_low
-    #end = time.perf_counter()
-    #print(f"Time for boundary_up, boundary_low : {end - start:0.7f} seconds")
     # select on the boundary data
     #
     grad_select         = np.logical_or(ydata >= boundary_up,ydata <= boundary_low)  # True for bad data
@@ -432,90 +416,106 @@ def boundary_range_ht(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_typ
     import copy
 
     from time import process_time
+    import numpy.ma as ma
+
+    import torch
 
     # To get the upper and lower boundaries we used binned data and its statistics
     # 
-    stats_x_data,stats_x_datastd             = checkerstats_ht(xdata,usedbinning,stats_type)
+    stats_x_data, _             = checkerstats_ht(xdata,usedbinning,stats_type)
     stats_y_data,stats_y_datastd,stats_mask  = checkerstats_ht(ydata,usedbinning,stats_type,ydata_mask)
-        
+    # NB: checkerstats_ht returns numpy arrays and masked arrays
+    # TODO: support masked arrays in Heat
 
     # determine a sigma boundary
     #
-    # freq values
-    x_boundary_values = stats_x_data
-    x_boundary_values = np.insert(x_boundary_values,0,xdata[0])
-    x_boundary_values = np.insert(x_boundary_values,-1,xdata[-1])
+    # freq values 
+    x_boundary_values = np.zeros((stats_x_data.shape[-1]+2,), dtype=stats_x_data.dtype)
+    x_boundary_values[1:-1] = stats_x_data
+    x_boundary_values[0] = xdata[0]
+    x_boundary_values[-1] = xdata[-1]
     #
-    # VECTORIZED X BOUNDARY VALUES
-    # x range
-    #
-    # x_boundary_values = np.zeros((len(stats_x_data)+2,), dtype = np.array(stats_x_data).dtype)
-    # x_boundary_values[0] = xdata[0]
-    # x_boundary_values[-1] = xdata[-1]
-    # x_boundary_values[1:-1] = stats_x_data
        
     # amp values
-    y_boundary_values_up  = stats_y_data + bound_sigma * stats_y_datastd
-    #
-    y_boundary_values_up  = np.insert(y_boundary_values_up,0,y_boundary_values_up[0])
-    y_boundary_values_up  = np.insert(y_boundary_values_up,-1,y_boundary_values_up[-1])
 
-    y_boundary_values_low = stats_y_data - bound_sigma * stats_y_datastd
-    #
-    y_boundary_values_low = np.insert(y_boundary_values_low,0,y_boundary_values_low[0])
-    y_boundary_values_low = np.insert(y_boundary_values_low,-1,y_boundary_values_low[-1])
+    # allocate buffer for boundary values
+    # NB stats_y_data, stats_y_data are masked arrays
+    y_boundary_values_up = ma.zeros((stats_y_data.shape[0], stats_y_data.shape[1]+2), dtype=stats_y_data.dtype)
+    
+    # fill in UPPER boundary values and calculate statistics
+    y_boundary_values_up[:, 1:-1] = stats_y_data + bound_sigma * stats_y_datastd
+    y_boundary_values_up[:, 0] = y_boundary_values_up[:, 1]
+    y_boundary_values_up[:, -1] = y_boundary_values_up[:, -2]
+    boundary_stats_up = checkerstats_ht(y_boundary_values_up, subspectra=1, stats_type='median')
 
-    # Here check on the boundary 
-    # 
-    boundary_stats_up   = data_stats(y_boundary_values_up,stats_type='median',accur=100)
-    boundary_stats_low  = data_stats(y_boundary_values_low,stats_type='median',accur=100)
-
+    
+    #  fill in LOWER boundary values and calculate statistics
+    y_boundary_values_low = ma.zeros((stats_y_data.shape[0], stats_y_data.shape[1]+2), dtype=stats_y_data.dtype)
+    y_boundary_values_low[:, 1:-1] = stats_y_data - bound_sigma * stats_y_datastd
+    y_boundary_values_low[:, 0] = y_boundary_values_low[:, 1]
+    y_boundary_values_low[:, -1] = y_boundary_values_low[:, -2]
+    boundary_stats_low  = checkerstats_ht(y_boundary_values_low, subspectra=1, stats_type='median')
+    
+    # concatenate boundary statistics to 2D array
+    boundary_stats_up = np.concatenate((boundary_stats_up[0], boundary_stats_up[1]), axis=1)
+    boundary_stats_low = np.concatenate((boundary_stats_low[0], boundary_stats_low[1]), axis=1)
+    # allocate buffer for boundary selection
+    bound_select = ma.zeros((stats_y_data.shape[0], stats_y_data.shape[1]+2), dtype=bool)   
+    # fill in boundary selection
     if usedbinning > 10:
-
-        if boundary_stats_up[0] != boundary_stats_up[1]:
-
-            bound_select         = np.logical_or(y_boundary_values_up >= boundary_stats_up[0] + bound_sigma * boundary_stats_up[1],\
-                                                     y_boundary_values_low <= boundary_stats_low[0] - bound_sigma * boundary_stats_low[1])  # True for bad data
-        else:
-            bound_select         = np.zeros(len(y_boundary_values_low)).astype(bool)
-        
-    else:
-            bound_select         = np.zeros(len(y_boundary_values_low)).astype(bool)
+        is_not_same = np.where(boundary_stats_up[:, 1] != boundary_stats_up[:, 0])[0]
+        if is_not_same.shape[0] > 0:
+            bound_select[is_not_same] = np.logical_or(y_boundary_values_up[is_not_same] >= (boundary_stats_up[is_not_same, 0] + bound_sigma * boundary_stats_up[is_not_same, 1]).reshape(-1,1),\
+                                                  y_boundary_values_low[is_not_same] <= (boundary_stats_low[is_not_same, 0] - bound_sigma * boundary_stats_low[is_not_same, 1]).reshape(-1,1)) # True for bad data
 
     # case there are also bins the have been marked by 
-    # checkerstats_selcheckerstats_sel
+    # checkerstats_sel
     #
-    if max(stats_mask) > 0:
-        stats_mask    = stats_mask.astype(bool)
-        stats_mask    = np.insert(stats_mask,0,bound_select[0])
-        stats_mask    = np.insert(stats_mask,len(stats_mask),bound_select[-1])
-        bound_select  = np.logical_or(bound_select,stats_mask.astype(bool))
+    flagged_timestamps = np.where(np.any(stats_mask, axis=1))[0]
+    if len(flagged_timestamps) > 0:
+        # update boundary selection
+        stats_mask_expand = np.zeros((stats_mask.shape[0], stats_mask.shape[1]+2), dtype=bool)
+        stats_mask_expand[:, 1:-1] = stats_mask
+        stats_mask_expand[:, 0] = bound_select[:, 0]
+        stats_mask_expand[:, -1] = bound_select[:, -1]
+        bound_select[flagged_timestamps] = np.logical_or(bound_select[flagged_timestamps], stats_mask_expand[flagged_timestamps])  # True for bad data
+        del stats_mask_expand
 
 
     # Interpolate and convolve the boundary region 
     # of the data and use this to mark bad data
     #
-    interp_boundary_up         = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],\
-                                               np.array(y_boundary_values_up)[np.invert(bound_select)])
-    # check timeing of process
+
+    # interp_boundary_up         = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],\
+    #                                            np.array(y_boundary_values_up)[np.invert(bound_select)])
     #
-    interp_boundary_low        = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],\
-                                               np.array(y_boundary_values_low)[np.invert(bound_select)])
-    #
+    # interp_boundary_low        = np.interp(xdata,np.array(x_boundary_values)[np.invert(bound_select)],\
+    #                                            np.array(y_boundary_values_low)[np.invert(bound_select)])
+    # calculate interpolated values for the batch of timestamps 
+    interp_boundary_up = np.zeros_like(ydata)
+    interp_boundary_low = np.zeros_like(ydata)
+    #TODO: vectorize via torch.nn.functional.interpolate
+    for i in range(ydata.lshape[0]):
+        interp_boundary_up[i] = np.interp(xdata, np.array(x_boundary_values)[np.invert(bound_select[i])], np.array(y_boundary_values_up[i])[np.invert(bound_select[i])])
+        interp_boundary_low[i] = np.interp(xdata, np.array(x_boundary_values)[np.invert(bound_select[i])], np.array(y_boundary_values_low[i])[np.invert(bound_select[i])])
+    # free memory
+    del x_boundary_values, y_boundary_values_up, y_boundary_values_low
+
+    # wrap numpy arrays into (potentially distributed) Heat DNDarrays
+    interp_boundary_up = ht.array(interp_boundary_up, is_split=0)
+    interp_boundary_low = ht.array(interp_boundary_low, is_split=0)
+
     if smooth_kernel > 3:
         # switch to "hamming" for now, batch-"wiener" not implemented in Heat yet
-        # boundary_up                = convolve_1d_data(interp_boundary_up,smooth_type='wiener',smooth_kernel=smooth_kernel)
-        # boundary_low               = convolve_1d_data(interp_boundary_low,smooth_type='wiener',smooth_kernel=smooth_kernel)
-        boundary_up                = convolve_1d_data(interp_boundary_up,smooth_type='hamming',smooth_kernel=smooth_kernel)
-        boundary_low               = convolve_1d_data(interp_boundary_low,smooth_type='hamming',smooth_kernel=smooth_kernel)
+        boundary_up                = batch_convolve_1d_data(interp_boundary_up,smooth_type='hamming',smooth_kernel=smooth_kernel)
+        boundary_low               = batch_convolve_1d_data(interp_boundary_low,smooth_type='hamming',smooth_kernel=smooth_kernel)
     else:
         boundary_up  = interp_boundary_up
         boundary_low = interp_boundary_low
 
     # select on the boundary data
     #
-    grad_select         = np.logical_or(ydata >= boundary_up,ydata <= boundary_low)  # True for bad data
-
+    grad_select         = ht.logical_or(ydata >= boundary_up,ydata <= boundary_low)  # True for bad data
 
     return grad_select,boundary_up,boundary_low
 
@@ -580,13 +580,11 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
             grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],kernel_sequence_type=kernel_sequence_type[sp],\
                                                usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
                                                smooth_bound_kernel=smooth_bound_kernel[sp])
-            print("In flag_spec_by_smoothing: grad_selectsp, grad_select = ", grad_selectsp.shape, grad_select.shape)
             grad_select = np.append(grad_select,grad_selectsp)
 
 
         # clean up process is of the order of 0.04 sec
         #
-        print("In flag_spec_by_smoothing: grad_select = ", grad_select.shape)
         final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
 
     else:
@@ -664,48 +662,6 @@ def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,ker
     final_spectra_mask[need_flagging] = cleanup_spectra_mask_subset
     return final_spectra_mask
 
-    # if np.sum(cleanup_spectra_mask) != len(cleanup_spectra_mask):
-
-    #     # do the smooth flagging
-    #     #
-    #     grad_select = np.array([]).astype(bool)
-    #     for sp in range(len(splitting)-1):
-
-    #         if splitting[sp+1] == -1:
-    #             sp_freq       = freq[splitting[sp]:]
-    #             sp_data       = np.array(fg_spec)[splitting[sp]:]
-    #             sp_data_mask  = cleanup_spec_mask[splitting[sp]:]
-    #         else:
-    #             sp_freq       = freq[splitting[sp]:splitting[sp+1]]
-    #             sp_data       = np.array(fg_spec)[splitting[sp]:splitting[sp+1]]
-    #             sp_data_mask  = cleanup_spec_mask[splitting[sp]:splitting[sp+1]]
-
-
-    #         if (len(sp_freq)%usedbinning[sp]) != 0:
-    #             print('\nCAUTION \n\nThe setting produced sub-arrays with no equal sizes.')
-    #             print('Subrray size is and used binning parameter ',len(sp_freq),usedbinning[sp])
-    #             print('Change usedbinning parameter in main programme\n\n')
-    #             sys.exit(-1)
-
-
-    #         grad_selectsp = flag_smoothing(sp_freq,sp_data,sp_data_mask,smooth_type=smooth_type[sp],kernel_sizes=kernel_sizes[sp],kernel_sequence_type=kernel_sequence_type[sp],\
-    #                                            usedbinning=usedbinning[sp],bound_sigma=bound_sigma[sp],stats_type=stats_type[sp],\
-    #                                            smooth_bound_kernel=smooth_bound_kernel[sp])
-
-    #         grad_select = np.append(grad_select,grad_selectsp)
-
-
-    #     # clean up process is of the order of 0.04 sec
-    #     #
-    #     final_sp_mask = clean_up_1d_mask(grad_select,clean_bins,setvalue=True)
-
-    # else:
-
-    #     final_sp_mask = cleanup_spec_mask.astype(bool)
-
-    # return final_sp_mask
-
-
 def batch_convolve_1d_data(data,smooth_type='hamming',smooth_kernel=3):
     """
     Vectorized version of convolve_1d_data. Uses PyTorch batch convolutions instead of scipy convolve, and Heat as a backend for parallelization.
@@ -721,6 +677,9 @@ def batch_convolve_1d_data(data,smooth_type='hamming',smooth_kernel=3):
     """
     import torch
 
+
+    if isinstance(data, np.ndarray):
+        data = ht.array(data, is_split=0)
     if smooth_type == 'hamming':
         sm_kernel = torch.hamming_window(smooth_kernel, dtype=data.larray.dtype)
         sm_kernel = ht.array(sm_kernel, device=data.device)
@@ -753,7 +712,6 @@ def convolve_1d_data(data,smooth_type='hanning',smooth_kernel=3):
          sm_data = medfilt(data,smooth_kernel)
 
     elif smooth_type == 'wiener':
-#         print("In convolve_1d_data: smooth_kernel = ", smooth_kernel)
          # TODO: implement vectorized version of wiener in Heat
          sm_data = wiener(data,smooth_kernel)
 
@@ -783,7 +741,7 @@ def kernel_sequence(kernel_sizes,kernel_sequence_type='middle_fast'):
                  kernel.append(3*i**2)
 
         elif kernel_sequence_type == 'fast':
-            kernel.append(2**i)
+            kernel.append(2**i+1)
 
         else:
             # slow
@@ -816,8 +774,6 @@ def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,kerne
     info_fg   = []
     info_fg_k = []
 
-#    print("In flag_smoothing: len(kernel) = ", len(kernel), type(kernel))
-#    print("In flag_smoothing: kernel = ", kernel)
     for k in kernel:
         
         grad_select_org = grad_select
@@ -825,10 +781,7 @@ def flag_smoothing(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,kerne
         # smooth the original spectrum and subtract it from the
         # original dataset
         #
-        #start = time.perf_counter()
         sm_data   = convolve_1d_data(spec,smooth_type=smooth_type,smooth_kernel=k)
-        #end = time.perf_counter()
-        #print(f"In flag_smoothing: convolve_1d_data : {end - start:0.7f} seconds")
         resi_data = spec - sm_data
 
         # generate a flag based on the boundary region
@@ -885,25 +838,25 @@ def flag_smoothing_ht(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,ke
     info_fg   = []
     info_fg_k = []
 
-    print("In flag_smoothing: len(kernel) = ", len(kernel), type(kernel))
-    print("In flag_smoothing: kernel = ", kernel)
     for k in kernel:
-        
         grad_select_org = grad_select
 
         # smooth the original spectrum and subtract it from the
         # original dataset
         #
+        start = time.perf_counter()
         sm_data   = batch_convolve_1d_data(spec,smooth_type=smooth_type,smooth_kernel=k)
+        end = time.perf_counter()
+        print(f"Time to convolve with kernel size {k}: {end-start} seconds")
         # residuals
         resi_data = spec - sm_data
 
         # generate a flag based on the boundary region
-        grad_select,boundary_up,boundary_low = boundary_range_ht(freq,resi_data,usedbinning,ht.logical_not(grad_select),\
+        grad_select, _, _ = boundary_range_ht(freq,resi_data,usedbinning,ht.logical_not(grad_select),\
                                                                   bound_sigma=bound_sigma,stats_type=stats_type,\
                                                                   smooth_kernel=smooth_bound_kernel)
         # and combine with the previous                                                          
-        grad_select = np.logical_or(grad_select,grad_select_org)
+        grad_select = ht.logical_or(grad_select,grad_select_org)
 
     return grad_select
 
@@ -995,19 +948,6 @@ def checkerstats(data,split,stats_type):
     """
     sp_data = np.array_split(data, split)
 
-    # # vectorized implementation before update 12.6.2024 # #
-    # # pad data with zeros to make sure it is divisible by split
-    # # store number of padded zeros to remove them at the end
-    # padded_elements = split - len(data) % split
-    # data = np.pad(data, (0, padded_elements), mode='constant', constant_values=(0, 0))
-    # # reshape data to a 2D array, each row is a bin
-    # data = data.reshape((split, -1))
-    # # calculate statistics
-    # statsmean, statsstd, _ = data_stats_vect(data, padded_elements, stats_type, accur=100)
-    # # reshape data back to 1D array and remove padded zeros
-    # data = data.flatten()[:-padded_elements]
-    # return statsmean, statsstd
-    #print("In checkerstats: stats_type = ", stats_type)
     if stats_type == 'madmadmedian':
         #
         from astropy.stats import mad_std, median_absolute_deviation
@@ -1021,7 +961,6 @@ def checkerstats(data,split,stats_type):
         #
         data_mean      = np.mean(sp_data,axis=1) 
         data_std       = mad_std(sp_data,axis=1)
-        print("In checkerstats: sp_data[0].shape, sp_data[-1].shape = ", sp_data[0].shape, sp_data[-1].shape)
 
     elif stats_type == 'madmedian':
         #
@@ -1033,7 +972,7 @@ def checkerstats(data,split,stats_type):
     elif stats_type == 'median':
         data_mean      = np.median(sp_data,axis=1)
         data_std       = np.std(sp_data,axis=1)
-        print("In checkerstats: data_mean = ", data_mean, data_std)
+
     else:
         print('bugger not know')
         sys.exit(-1)
@@ -1041,15 +980,17 @@ def checkerstats(data,split,stats_type):
 
 def checkerstats_ht(data, subspectra, stats_type, select=None):
     """
-    Calculate the statistics of the data on `split` number of subarrays
-    This function uses the Heat backend and calculates the statistics for all timestamps in batch
+    Calculate the statistics of the data on `subspectra` number of subarrays
 
     Parameters
+    ----------
+    data: DNDarray
+
+
     """
     # `data` is 1D (nr of channels) or 2D (timestamps, nr of channels) and is potentially distributed along the timestamps axis
     # each spectrum is binned into `subspectra` (changed variable name to avoid confusion with dndarray.split attribute)
     # reshape `data` into a 3D cube with dimensions (timestamps, subspectra, channels per subspectrum)
-    
     if data.ndim == 1:
         # frequencies, expand to 2D
         data = data.reshape(1, -1)
@@ -1059,15 +1000,22 @@ def checkerstats_ht(data, subspectra, stats_type, select=None):
 
     # convert data to numpy as some of the options are not supported by Heat
     #TODO: implement mad, mad_std, mad_median, masked array support in Heat
-    local_sp_data = sp_data.larray.numpy()
+    try:
+        local_sp_data = sp_data.larray.numpy()
+        device = sp_data.device
+    except AttributeError:
+        # is already a numpy array
+        local_sp_data = sp_data
+        device = None
 
     if select is not None:
-        sp_data_select = ht.logical_not(select.reshape(sp_shape)) 
-        local_sp_data_select = sp_data_select.larray.numpy()
+        if isinstance(select, ht.DNDarray):
+            sp_data_select = ht.logical_not(select.reshape(sp_shape)) 
+            local_sp_data_select = sp_data_select.larray.numpy()
+        else:
+            local_sp_data_select = np.invert(select.reshape(sp_shape))
         local_sp_data    = ma.masked_array(local_sp_data,local_sp_data_select)
-
-
-    #print("In checkerstats: stats_type = ", stats_type)
+    
     if stats_type == 'madmadmedian':
         #
         from astropy.stats import mad_std, median_absolute_deviation
@@ -1080,7 +1028,10 @@ def checkerstats_ht(data, subspectra, stats_type, select=None):
         from astropy.stats import mad_std
         #
         data_mean      = np.mean(local_sp_data,axis=-1) 
+        start = time.perf_counter()
         data_std       = mad_std(local_sp_data,axis=-1)
+        end = time.perf_counter()
+        print(f"In checkerstats_ht: mad_std: {end - start:0.7f} seconds")
 
     elif stats_type == 'madmedian':
         #
@@ -1100,7 +1051,8 @@ def checkerstats_ht(data, subspectra, stats_type, select=None):
         print('bugger not know')
         sys.exit(-1)
 
-    # wrap the numpy arrays in (potentially distributed) Heat DNDarrays again
+
+    # TODO: wrap the numpy arrays in (potentially distributed) Heat DNDarrays, when masked DNDarrays are supported
     if data_mean.shape[0] == 1:
         # frequencies, bring back to 1D
         data_mean = data_mean.squeeze(0)
@@ -1111,15 +1063,17 @@ def checkerstats_ht(data, subspectra, stats_type, select=None):
         split_axis = 0
 
     if select is not None:
-        # return data and mask separately
-        data_mean = ht.array(data_mean.data, device=data.device, is_split=split_axis)
-        data_std = ht.array(data_std.data, device=data.device, is_split=split_axis)
-        data_mean_mask = ht.array(data_mean.mask, device=data.device, is_split=split_axis)
-        return data_mean, data_std, data_mean_mask
-    
+        # # return data and mask separately
+        # TODO wrap the numpy arrays in (potentially distributed) Heat DNDarrays
+        # data_mean_mask = ht.array(data_mean.mask, device=device, is_split=split_axis)
+        # data_mean = ht.array(data_mean.data, device=device, is_split=split_axis)
+        # data_std = ht.array(data_std.data, device=device, is_split=split_axis)
+        return data_mean, data_std, data_mean.mask
 
-    data_mean = ht.array(data_mean, device=data.device, is_split=split_axis)
-    data_std = ht.array(data_std, device=data.device, is_split=split_axis)
+    # TODO wrap in DNDarrays when masked arrays are supported    
+    # data_mean = ht.array(data_mean, device=device, is_split=split_axis)
+    # data_std = ht.array(data_std, device=device, is_split=split_axis)
+
     # data_mean has dimensions (timestamps, subspectra), i.e. for each timestamp it contains the "mean" amplitude of each subspectrum
     # same for data_std
     return data_mean, data_std

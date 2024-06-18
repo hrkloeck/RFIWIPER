@@ -424,6 +424,8 @@ def boundary_range_ht(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_typ
 
     import torch
 
+    # keep track of Heat device for later
+    heat_device = ydata.device
     # To get the upper and lower boundaries we used binned data and its statistics
     # 
     stats_x_data, _             = checkerstats_ht(xdata,usedbinning,stats_type)
@@ -506,8 +508,8 @@ def boundary_range_ht(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_typ
     del x_boundary_values, y_boundary_values_up, y_boundary_values_low
 
     # wrap numpy arrays into (potentially distributed) Heat DNDarrays
-    interp_boundary_up = ht.array(interp_boundary_up, is_split=0)
-    interp_boundary_low = ht.array(interp_boundary_low, is_split=0)
+    interp_boundary_up = ht.array(interp_boundary_up, is_split=0, device=heat_device)
+    interp_boundary_low = ht.array(interp_boundary_low, is_split=0, device=heat_device)
 
     if smooth_kernel > 3:
         # switch to "hamming" for now, batch-"wiener" not implemented in Heat yet
@@ -1004,7 +1006,7 @@ def checkerstats_ht(data, subspectra, stats_type, select=None):
     # convert data to numpy as some of the options are not supported by Heat
     #TODO: implement mad, mad_std, mad_median, masked array support in Heat
     try:
-        local_sp_data = sp_data.larray.numpy()
+        local_sp_data = sp_data.larray.cpu().numpy()
         device = sp_data.device
     except AttributeError:
         # is already a numpy array

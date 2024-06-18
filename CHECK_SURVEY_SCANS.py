@@ -30,6 +30,7 @@ import RFI_LIB_SCANS as RFIL
 import sys
 sys.path.append("heat/")
 import heat as ht
+import torch
 # printing to stdout when running on the cluster (print() doesn't work)
 import logging
 logging.basicConfig(format='%(message)s')
@@ -348,12 +349,15 @@ def main():
                         # go through all the time stamps
                         #
                         if heat_backend:
-                            log.warning('Using Heat backend')
+                            # if GPUS are available, set device to GPU
+                            if torch.cuda.device_count() > 0:
+                                heat_device = "gpu"
+                            log.warning(f'Using Heat backend on device {heat_device}')
                             # Heat backend supports only 'hamming' for now
                             # TODO: implement support for other window functions
                             smooth_type = ['hamming','hamming']                 
-                            new_mask = ht.array(new_mask, split=0)
-                            fg_spectra = ht.array(spectrum_data[:,1:], split=0) # exclude the DC term for the FG estimates
+                            new_mask = ht.array(new_mask, split=0, device=heat_device)
+                            fg_spectra = ht.array(spectrum_data[:,1:], split=0, device=heat_device) # exclude the DC term for the FG estimates
                             # check what time has been flagged
                             check_time_fg = ht.sum(new_mask.astype(ht.int), axis=1)
                             cleanup_spectra_mask = ht.ones(fg_spectra.shape, split=0).astype(ht.bool)

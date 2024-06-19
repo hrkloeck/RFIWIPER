@@ -101,9 +101,12 @@ def main():
     usencpus                  = opts.usencpus
     # use Heat as backend
     heat_backend              = opts.heat_backend
-    if heat_backend:
+    heat_device               = opts.heat_device
+    if heat_backend or heat_device:
         # parallelism via mpirun call
         donotncpus = True
+    if heat_device:
+        heat_backend = True
 
     do_rfi_report             = opts.do_rfi_report
     do_rfi_report_sigma       = opts.do_rfi_report_sigma
@@ -350,9 +353,8 @@ def main():
                         #
                         if heat_backend:
                             # if GPUS are available, set device to GPU
-                            if torch.cuda.device_count() > 0:
-                                heat_device = "gpu"
-                            else:
+                            if heat_device == "gpu" and torch.cuda.device_count() == 0:
+                                log.warning('No GPUs available, using CPU instead')                                
                                 heat_device = "cpu"
                             log.warning(f'Using Heat backend on device {heat_device}')
                             # Heat backend supports only 'hamming' for now
@@ -868,6 +870,8 @@ def new_argument_parser():
     # if this option is passed, `heat_backend` is set to True and the heat package is used as backend for parallelism
     parser.add_option('--HEAT_BACKEND', dest='heat_backend', action='store_true',
                       default=False, help='Use the Heat backend for parallelization and GPU support')
+    parser.add_option('--HEAT_DEVICE', dest='heat_device', type=str, default='cpu',
+                      help='Device to use for Heat backend (cpu or gpu)')
     return parser
 
 

@@ -668,6 +668,7 @@ def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,ker
     log.warning(f"After splitting loop: grad_select.device = {grad_select.device}")
     cleanup_spectra_mask_subset = clean_up_1d_mask_ht(grad_select, clean_bins, setvalue=True)
     final_spectra_mask = cleanup_spectra_mask.astype(ht.bool)
+    log.warning(f"dtypes: final_spectra_mask = {final_spectra_mask.dtype}, cleanup_spectra_mask_subset = {cleanup_spectra_mask_subset.dtype}")
     final_spectra_mask[need_flagging] = cleanup_spectra_mask_subset
     return final_spectra_mask
 

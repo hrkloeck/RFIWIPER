@@ -641,11 +641,8 @@ def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,ker
     need_flagging = ht.sum(cleanup_spectra_mask, axis=1) != cleanup_spectra_mask.shape[1]
     fg_spectra = fg_spectra[need_flagging]
     cleanup_spectra_mask_subset = cleanup_spectra_mask[need_flagging]
-    print(f"Before splitting loop: cleanup_spectra_mask_subset.dtype = {cleanup_spectra_mask_subset.dtype}")
     # allocate grad_select for all spectra
     grad_select = ht.zeros(fg_spectra.shape, dtype=ht.bool, split=0, device=fg_spectra.device) 
-    log.warning(f"Before splitting loop: grad_select.device = {grad_select.device}")
-    log.warning(f"fg_spectra.device, cleanup_spectra_mask_subset, cleanup_spectra_mask, need_flagging = {fg_spectra.device}, {cleanup_spectra_mask_subset.device}, {cleanup_spectra_mask.device}, {need_flagging.device}")
     for sp in range(len(splitting)-1):
         if splitting[sp+1] == -1:
             sp_slice = slice(splitting[sp], None)
@@ -666,10 +663,8 @@ def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,ker
 
         grad_select[:, sp_slice] = flag_smoothing_ht(sp_freq, sp_data, sp_data_mask, smooth_type=smooth_type[sp], kernel_sizes=kernel_sizes[sp], kernel_sequence_type=kernel_sequence_type[sp],\
                                             usedbinning=usedbinning[sp], bound_sigma=bound_sigma[sp], stats_type=stats_type[sp], smooth_bound_kernel=smooth_bound_kernel[sp])
-    log.warning(f"After splitting loop: grad_select.device = {grad_select.device}")
     cleanup_spectra_mask_subset = clean_up_1d_mask_ht(grad_select, clean_bins, setvalue=True)
     final_spectra_mask = cleanup_spectra_mask.astype(ht.bool)
-    log.warning(f"dtypes: final_spectra_mask = {final_spectra_mask.dtype}, cleanup_spectra_mask_subset = {cleanup_spectra_mask_subset.dtype}")
     final_spectra_mask[need_flagging] = cleanup_spectra_mask_subset
     return final_spectra_mask
 
@@ -837,11 +832,8 @@ def flag_smoothing_ht(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,ke
 
     from time import process_time
     #TODO verify that these copies are necessary
-    log.warning(f"spec_mask.device = {spec_mask.device}")
     grad_select     = spec_mask.copy()
     grad_select_org = spec_mask.copy()
-    log.warning(f"grad_select devices: {grad_select.device}, {grad_select_org.device}, {spec_mask.device}")
-
 
     # set the kernel sequence
     #

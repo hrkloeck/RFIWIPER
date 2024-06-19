@@ -369,13 +369,12 @@ def main():
 
                             # time the flagging
                             log.warning('Heat backend: starting flagging')
-                            log.warning('Devices: fg_spectra, freq, cleanup_spectra_mask: ', fg_spectra.device, freq.device, cleanup_spectra_mask.device)
                             fg_t = process_time()
                             final_mask = RFIL.flag_spec_by_smoothing_ht(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins)
                             new_mask = final_mask # TODO: this is probably unnecessary  
                             if toutput:
                                 elapsed_time = process_time() - fg_t
-                                log.warning('Heat backend: time uses ', elapsed_time, ' ', d.replace('timestamp', ''))
+                                print(f'Heat backend: batch flagging on {new_mask.comm.size} processes took {elapsed_time} seconds')
                         else:
                             # time entire procedure
                             fg_t               = process_time()
@@ -403,7 +402,7 @@ def main():
                             if toutput:
                                 # do some time measures
                                 elapsed_time = process_time() - fg_t
-                                log.warning(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
+                                print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
 
 
             full_new_mask[d.replace('timestamp','')]      = new_mask
@@ -413,7 +412,7 @@ def main():
     # determine the full fg time required 
     full_fg_elapsed_time = process_time() - full_fg_time
     if toutput:
-        log.warning(' Full FG time needed ',full_fg_elapsed_time,' ')
+        print(' Full FG time needed ',full_fg_elapsed_time,' ')
 
     # ---------------------------------------------------------------------------------------------
     # Merge the mask into a single one ONLY IF BOTH CHANNELS ARE EQUAL

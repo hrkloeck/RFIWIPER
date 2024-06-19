@@ -942,10 +942,10 @@ def clean_up_1d_mask_ht(mask,bins=[[True,False,True]],setvalue=True):
             # TODO: replace this loop with ht.unfold once merged
             inputmask_3d[:, :, j].larray = inputmask.larray[:, j:channels-len(bins[k])+j]
         # find the rows where all elements are equal to the elements in bins[k]            
-        isequal_3d = ht.where((inputmask_3d == ht.array(bins[k], device=inputmask_3d.device)).sum(axis=-1) == len(bins[k]))[0]
+        isequal_3d = ht.where((inputmask_3d == ht.array(bins[k], device=inputmask_3d.device)).sum(axis=-1) == len(bins[k]))
         # set the values in original inputmask to setvalue
         if len(isequal_3d) > 0:
-            for i in isequal_3d:
+            for i in isequal_3d[0]:
                 inputmask[:, i:i+len(bins[k])-1] = setvalue
         # free up memory            
         del inputmask_3d

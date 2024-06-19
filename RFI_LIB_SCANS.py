@@ -642,6 +642,7 @@ def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,ker
     # allocate grad_select for all spectra
     grad_select = ht.zeros(fg_spectra.shape, split=0, device=fg_spectra.device) 
     log.warning(f"Before splitting loop: grad_select.device = {grad_select.device}")
+    log.warning(f"fg_spectra.device, cleanup_spectra_mask_subset, cleanup_spectra_mask, need_flagging = {fg_spectra.device}, {cleanup_spectra_mask_subset.device}, {cleanup_spectra_mask.device}, {need_flagging.device}")
     for sp in range(len(splitting)-1):
         if splitting[sp+1] == -1:
             sp_slice = slice(splitting[sp], None)

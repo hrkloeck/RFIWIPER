@@ -352,6 +352,8 @@ def main():
                             # if GPUS are available, set device to GPU
                             if torch.cuda.device_count() > 0:
                                 heat_device = "gpu"
+                            else:
+                                heat_device = "cpu"
                             log.warning(f'Using Heat backend on device {heat_device}')
                             # Heat backend supports only 'hamming' for now
                             # TODO: implement support for other window functions

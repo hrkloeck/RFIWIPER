@@ -431,6 +431,8 @@ def boundary_range_ht(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_typ
     stats_x_data, _             = checkerstats_ht(xdata,usedbinning,stats_type)
     stats_y_data,stats_y_datastd,stats_mask  = checkerstats_ht(ydata,usedbinning,stats_type,ydata_mask)
     # NB: checkerstats_ht returns numpy arrays and masked arrays
+    # convert xdata to numpy as well
+    xdata = xdata.cpu().numpy()
     # TODO: support masked arrays in Heat
 
     # determine a sigma boundary

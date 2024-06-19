@@ -832,6 +832,7 @@ def flag_smoothing_ht(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,ke
 
     from time import process_time
     #TODO verify that these copies are necessary
+    log.warning(f"spec_mask.device = {spec_mask.device}")
     grad_select     = spec_mask.copy()
     grad_select_org = spec_mask.copy()
     log.warning(f"grad_select devices: {grad_select.device}, {grad_select_org.device}, {spec_mask.device}")

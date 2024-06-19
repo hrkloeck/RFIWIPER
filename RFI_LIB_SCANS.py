@@ -1019,7 +1019,7 @@ def checkerstats_ht(data, subspectra, stats_type, select=None):
     if select is not None:
         if isinstance(select, ht.DNDarray):
             sp_data_select = ht.logical_not(select.reshape(sp_shape)) 
-            local_sp_data_select = sp_data_select.larray.numpy()
+            local_sp_data_select = sp_data_select.larray.cpu().numpy()
         else:
             local_sp_data_select = np.invert(select.reshape(sp_shape))
         local_sp_data    = ma.masked_array(local_sp_data,local_sp_data_select)

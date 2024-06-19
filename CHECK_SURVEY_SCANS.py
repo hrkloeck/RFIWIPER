@@ -366,6 +366,7 @@ def main():
 
                             # time the flagging
                             log.warning('Heat backend: starting flagging')
+                            log.warning('Devices: fg_spectra, freq, cleanup_spectra_mask: ', fg_spectra.device, freq.device, cleanup_spectra_mask.device)
                             fg_t = process_time()
                             final_mask = RFIL.flag_spec_by_smoothing_ht(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins)
                             new_mask = final_mask # TODO: this is probably unnecessary  

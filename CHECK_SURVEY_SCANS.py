@@ -361,7 +361,7 @@ def main():
                             freq = ht.array(freq, split=None, device=heat_device)
                             # check what time has been flagged
                             check_time_fg = ht.sum(new_mask.astype(ht.int), axis=1)
-                            cleanup_spectra_mask = ht.ones(fg_spectra.shape, split=0).astype(ht.bool)
+                            cleanup_spectra_mask = ht.ones(fg_spectra.shape, split=0, device=heat_device).astype(ht.bool)
                             time_is_flagged = check_time_fg != new_mask.shape[1]
                             cleanup_spectra_mask[time_is_flagged] = False
 

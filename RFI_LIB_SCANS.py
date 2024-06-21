@@ -10,7 +10,7 @@
 # data that is bad will be masked asd True or 1
 #
 # Heat backend implementation:
-# Claudia Comito
+# Claudia Comito, Juelich Supercomputing Centre
 # c.comito@fz-juelich.de
 # 
 # --------------------------------------------------------------------

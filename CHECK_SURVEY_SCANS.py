@@ -9,7 +9,7 @@
 # of the SKAMPI telescope and get Ferdinands data flagged 
 #
 # Heat backend implementation:
-# Claudia Comito
+# Claudia Comito, Juelich Supercomputing Centre
 # c.comito@fz-juelich.de
 #
 import h5py

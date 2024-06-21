@@ -145,7 +145,7 @@ However, you need to have the following packages installed for Heat to run:
  - mpi4py
  - torch (PyTorch) tailored to the specific CUDA version of your system
 
-### How to use the Heat backend
+### Run RFIWIPER with the Heat backend
 
 In the `RFIWIPER` directory, check out the `heat_backend` branch.
 

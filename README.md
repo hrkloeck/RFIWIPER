@@ -201,7 +201,7 @@ If you use the --HEAT_BACKEND flag without specifying the device, the default is
 
 ### TODOs
 
-Still to do (in order of decreasing impact):
+Still to do:
 - [ ] Compare Heat backend results with the original implementation (implement correctness tests)
 - [ ] Heat results are disconnected from the plotting routines
 - [ ] Use ht.load_hdf5 for parallel loading of HDF5 files

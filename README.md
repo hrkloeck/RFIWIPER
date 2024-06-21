@@ -199,6 +199,15 @@ srun --nodes=2 --ntasks-per-node=1 --gres=gpu:0 python CHECK_SURVEY_SCANS.py --D
 If you set the --HEAT_DEVICE flag, you can omit the --HEAT_BACKEND flag. 
 If you use the --HEAT_BACKEND flag without specifying the device, the default is the CPU(s).
 
+### TODOs
+
+Still to do (in order of decreasing impact):
+- [ ] Compare Heat backend results with the original implementation (implement correctness tests)
+- [ ] Heat results are disconnected from the plotting routines
+- [ ] Use ht.load_hdf5 for parallel loading of HDF5 files
+- [ ] Support masked arrays in Heat
+- [ ] Use Heat operations in checkerstats_ht instead of numpy
+- [ ] vectorize 1D interpolation in boundary_range_ht
 
 
 

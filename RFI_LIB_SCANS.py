@@ -8,6 +8,10 @@
 # 
 # To be consistent with numpy masked arrays 
 # data that is bad will be masked asd True or 1
+#
+# Heat backend implementation:
+# Claudia Comito
+# c.comito@fz-juelich.de
 # 
 # --------------------------------------------------------------------
 

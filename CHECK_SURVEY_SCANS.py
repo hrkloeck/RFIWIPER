@@ -8,6 +8,9 @@
 # This is an example to get you a head start using a HDF5 files
 # of the SKAMPI telescope and get Ferdinands data flagged 
 #
+# Heat backend implementation:
+# Claudia Comito
+# c.comito@fz-juelich.de
 #
 import h5py
 import numpy as np

@@ -129,3 +129,76 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC_FULLFG.png" width=25%>
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC_FULLFG.png" width=25%>
 
+## How to use the Heat backend
+(C. Comito, email c.comito AT fz-juelich.de for questions)
+
+This branch uses the [Heat](https://github.com/helmholtz-analytics/heat) library under the hood for parallel processing and GPU support.
+
+The main difference to the original implementation is that the flagging is performed in batch on all timestamps of an observation at once. 
+
+### Environment setup 
+
+You don't need to install Heat manually. The Heat library (latest version of the development branch) is included as a submodule in this repository. 
+
+However, you need to have the following packages installed for Heat to run:
+ - MPI (e.g. OpenMPI)
+ - mpi4py
+ - torch (PyTorch) tailored to the specific CUDA version of your system
+
+### How to use the Heat backend
+
+In the `RFIWIPER` directory, check out the `heat_backend` branch.
+
+```
+git checkout heat_backend
+```
+
+This branch contains a submodule pointing to a specific development branch of the Heat library. To initialize the submodule, run
+
+```
+git submodule update --init
+```
+
+The directory `RFIWIPER/heat` should now contain a clone of the Heat repository. 
+
+
+To run the Heat backend implementation, simply add the `--HEAT_BACKEND` flag to the command line. For example:
+
+```
+python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTCPUS --PROCESSING_TYPE=FAST --HEAT_BACKEND
+````
+
+### Parallelization
+
+The Heat backend uses MPI for parallelization. Do not use the `--USENCPUS` flag with the Heat backend. The number of MPI processes used is determined by the MPI configuration. For example, to run the job on 4 MPI processes, use the following command within your sbatch script:
+
+```
+srun -n 4 python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --PROCESSING_TYPE=FAST --HEAT_BACKEND
+```
+You can use other sbatch options to specify the number of nodes, processes (tasks) per node, etc.
+
+### GPU usage
+
+Important: 
+- You need to run the job on a GPU node
+- the PyTorch version installed should match the specific CUDA version of your system/container.
+- ideally, make sure your MPI is "CUDA-aware" 
+- Set the `CUDA_VISIBLE_DEVICES` environment variable. I.e., if you have 2 GPUs per node available, add 
+ 
+```
+export CUDA_VISIBLE_DEVICES=0,1
+``` 
+to your sbatch script to use both GPUs. Heat can distribute the workload across multiple GPUs, and even across multiple nodes if you have a multi-node setup.
+
+On the GLOW cluster, you have 2 GPU nodes with 1 GPU each. To distribute the job e.g. across 2 GPUs on 2 nodes, use the following command (I GUESS BUT I CANNOT TEST IT):
+
+```
+srun --nodes=2 --ntasks-per-node=1 --gres=gpu:0 python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --PROCESSING_TYPE=FAST --HEAT_DEVICE=gpu
+```
+
+If you set the --HEAT_DEVICE flag, you can omit the --HEAT_BACKEND flag. 
+If you use the --HEAT_BACKEND flag without specifying the device, the default is the CPU(s).
+
+
+
+

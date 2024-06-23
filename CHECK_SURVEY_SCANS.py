@@ -197,7 +197,9 @@ def main():
         kernel_sizes         = [7,30]                              # carefull these setting cost time 
         kernel_sequence_type = ['middle_fast','middle_fast']       # optional middle_fast, fast, slow
     elif flagprocessing == 'FAST':
-        kernel_sizes         = [7,13]                              # carefull these setting cost time  
+#        kernel_sizes         = [7,13]                              # carefull these setting cost time  
+        # lower kernel size for benchmarking with smaller RAM CPUs
+        kernel_sizes         = [7,12]  
         kernel_sequence_type = ['fast','fast']                     # optional middle_fast, fast, slow
     else:
         kernel_sizes         = [100,500]                           # carefull these setting cost time  

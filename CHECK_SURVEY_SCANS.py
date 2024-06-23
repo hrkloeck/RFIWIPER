@@ -105,10 +105,10 @@ def main():
     # use Heat as backend
     heat_backend              = opts.heat_backend
     heat_device               = opts.heat_device
-    if heat_backend or heat_device:
+    if heat_backend is True or heat_device is not None:
         # parallelism via mpirun call
         donotncpus = True
-    if heat_device:
+    if heat_device is not None:
         heat_backend = True
 
     do_rfi_report             = opts.do_rfi_report

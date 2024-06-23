@@ -107,7 +107,7 @@ def main():
     heat_device               = opts.heat_device
 
     log.warning(f'Heat backend: {heat_backend}, device: {heat_device}')
-    if heat_backend is not None or heat_device is not None:
+    if heat_backend or heat_device is not None:
         # parallelism via mpirun call
         donotncpus = True
     if heat_device is not None:
@@ -877,7 +877,7 @@ def new_argument_parser():
     # if this option is passed, `heat_backend` is set to True and the heat package is used as backend for parallelism
     parser.add_option('--HEAT_BACKEND', dest='heat_backend', action='store_true',
                       default=False, help='Use the Heat backend for parallelization and GPU support')
-    parser.add_option('--HEAT_DEVICE', dest='heat_device', type=str, default='cpu',
+    parser.add_option('--HEAT_DEVICE', dest='heat_device', type=str, default=None,
                       help='Device to use for Heat backend (cpu or gpu)')
     return parser
 

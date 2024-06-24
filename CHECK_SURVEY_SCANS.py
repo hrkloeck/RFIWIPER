@@ -321,7 +321,8 @@ def main():
                                 for cps in range(ncpus):
                                     if idx < t_steps:
                                         mmque.append(multiprocessing.Queue())
-                                        if toutput:
+                                        if toutput and step % 250 == 0:
+                                            # only print every 250th step
                                             print('Fan out jobs use ',ncpus,' CPU: ',idx,' ',d.replace('timestamp',''))
 
                                         fg_spec            = spectrum_data[idx,1:]      # exclude the DC term for the FG estimates

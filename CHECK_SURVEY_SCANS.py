@@ -27,7 +27,7 @@ from astropy import units as u
 import copy
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from time import process_time
+from time import process_time, perf_counter
 import RFI_LIB_SCANS as RFIL
 # import heat from submodule
 import sys
@@ -213,6 +213,7 @@ def main():
     # time the fg processing
     #
     full_fg_time   = process_time()
+    full_perf_time = perf_counter()
 
     full_new_mask = {}
     for d in timestamp_keys:
@@ -379,14 +380,17 @@ def main():
                             # time the flagging
                             log.warning('Heat backend: starting flagging')
                             fg_t = process_time()
+                            fg_t_perf = perf_counter()
                             final_mask = RFIL.flag_spec_by_smoothing_ht(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins)
                             new_mask = final_mask # TODO: this is probably unnecessary  
                             if toutput:
                                 elapsed_time = process_time() - fg_t
-                                print(f'Heat backend: batch flagging on {new_mask.comm.size} processes took {elapsed_time} seconds')
+                                elapsed_time_perf = perf_counter() - fg_t_perf
+                                print(f'Heat backend: batch flagging on {new_mask.comm.size} processes took: PROCESS_TIME {elapsed_time} seconds, ACTUAL TIME {elapsed_time_perf} seconds.')
                         else:
                             # time entire procedure
                             fg_t               = process_time()
+                            fg_t_perf          = perf_counter()
                             for s in range(spectrum_data.shape[0]):
                                 if toutput and s % 100 == 0:
                                     log.warning(f"{s}/{spectrum_data.shape[0]}")
@@ -411,7 +415,9 @@ def main():
                             if toutput:
                                 # do some time measures
                                 elapsed_time = process_time() - fg_t
-                                print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
+                                elapsed_time_perf = perf_counter() - fg_t_perf
+                                print(s,' process_time uses ',elapsed_time,' ',d.replace('timestamp',''))
+                                print(s,' perf_counter uses ',elapsed_time_perf,' ',d.replace('timestamp',''))
 
 
             full_new_mask[d.replace('timestamp','')]      = new_mask
@@ -420,8 +426,10 @@ def main():
 
     # determine the full fg time required 
     full_fg_elapsed_time = process_time() - full_fg_time
+    full_perf_elapsed_time = perf_counter() - full_perf_time
     if toutput:
         print(' Full FG time needed ',full_fg_elapsed_time,' ')
+        print(' Full FG perf time needed ',full_perf_elapsed_time,' ')
 
     # ---------------------------------------------------------------------------------------------
     # Merge the mask into a single one ONLY IF BOTH CHANNELS ARE EQUAL

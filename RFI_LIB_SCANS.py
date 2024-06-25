@@ -686,6 +686,8 @@ def batch_convolve_1d_data(data,smooth_type='hamming',smooth_kernel=3):
         size of the smoothing kernel. Default is 3    
     """
     import torch
+    from scipy.ndimage import convolve1d
+    from time import perf_counter
 
 
     if isinstance(data, np.ndarray):
@@ -700,6 +702,15 @@ def batch_convolve_1d_data(data,smooth_type='hamming',smooth_kernel=3):
     
     # batch-convolve each timestamp with the smoothing kernel
     sm_data = ht.convolve(data, sm_kernel, mode='same') / sm_kernel.sum()
+
+    # just for testing: scipy batch-convolve
+    sm_kernel_np = sm_kernel.cpu().numpy()
+    data_np = data.cpu().numpy()
+    start_scipy = perf_counter()
+    sm_data_np = convolve1d(data_np, sm_kernel_np, axis=-1, mode='constant')
+    end_scipy = perf_counter()
+    del sm_data_np
+    print(f"Scipy batch-convolution took {end_scipy - start_scipy} seconds")
 
     return sm_data
 

@@ -705,14 +705,14 @@ def batch_convolve_1d_data(data,smooth_type='hamming',smooth_kernel=3):
     sm_data = ht.convolve(data, sm_kernel, mode='same') / sm_kernel.sum()
     end_heat = perf_counter()
     log.warning(f"Heat batch-convolution took {end_heat - start_heat} seconds")
-    # just for testing: scipy batch-convolve
-    sm_kernel_np = sm_kernel.cpu().numpy()
-    data_np = data.larray.cpu().numpy()
-    start_scipy = perf_counter()
-    sm_data_np = convolve1d(data_np, sm_kernel_np, axis=-1, mode='constant')
-    end_scipy = perf_counter()
-    del sm_data_np
-    log.warning(f"Scipy batch-convolution took {end_scipy - start_scipy} seconds")
+    # # just for testing: scipy batch-convolve
+    # sm_kernel_np = sm_kernel.cpu().numpy()
+    # data_np = data.larray.cpu().numpy()
+    # start_scipy = perf_counter()
+    # sm_data_np = convolve1d(data_np, sm_kernel_np, axis=-1, mode='constant')
+    # end_scipy = perf_counter()
+    # del sm_data_np
+    # log.warning(f"Scipy batch-convolution took {end_scipy - start_scipy} seconds")
 
     return sm_data
 

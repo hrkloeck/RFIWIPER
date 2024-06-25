@@ -710,7 +710,7 @@ def batch_convolve_1d_data(data,smooth_type='hamming',smooth_kernel=3):
     sm_data_np = convolve1d(data_np, sm_kernel_np, axis=-1, mode='constant')
     end_scipy = perf_counter()
     del sm_data_np
-    print(f"Scipy batch-convolution took {end_scipy - start_scipy} seconds")
+    log.warning(f"Scipy batch-convolution took {end_scipy - start_scipy} seconds")
 
     return sm_data
 

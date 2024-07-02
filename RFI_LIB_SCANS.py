@@ -17,6 +17,7 @@ import numpy.ma as ma
 from copy import deepcopy
 from scipy.signal import convolve2d,correlate
 from scipy import stats
+import json
 
 def data_stats(data,stats_type='mean',accur=100):
     """
@@ -609,4 +610,14 @@ def str_in_strlist(string,strlist):
             isthere = True 
             break
     return isthere
+
     
+def get_json(filename,homedir=''):
+    """
+    get json info
+    """
+
+    with open(homedir+filename) as f:
+        jsondata = json.load(f)
+
+    return jsondata

@@ -420,7 +420,10 @@ def main():
                                 print(s,' process_time uses ',elapsed_time,' ',d.replace('timestamp',''))
                                 print(s,' perf_counter uses ',elapsed_time_perf,' ',d.replace('timestamp',''))
 
-
+            if heat_backend:
+                # gather distributed mask
+                # TODO implement parallel write to file
+                new_mask = new_mask.cpu().numpy()
             full_new_mask[d.replace('timestamp','')]      = new_mask
 
 

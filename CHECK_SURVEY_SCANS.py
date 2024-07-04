@@ -43,7 +43,6 @@ plt.rcParams['figure.figsize'] = im_size
 # ###################################################
 
 
-
 def main():
 
     import numpy as np
@@ -66,6 +65,7 @@ def main():
     #
     data_file                 = opts.datafile
     use_data                  = opts.usedata
+    use_noise_data            = opts.usenoisedata
     donotflag                 = opts.donotflag
     flagprocessing            = opts.flagprocessing
     dofgbyhand                = opts.hand_time_fg
@@ -87,11 +87,17 @@ def main():
     usencpus                  = opts.usencpus
     do_rfi_report             = opts.do_rfi_report
     do_rfi_report_sigma       = opts.do_rfi_report_sigma
+    scan_velo_fg_sigma        = opts.scan_velo_fg_sigma
+    rad_dec_scan              = opts.rad_dec_scan
+
 
     # define hat to plot
     #
-    plot_type                 = eval(use_data)
+    use_data_fg               = eval(use_data)
+    plot_type                 = eval(use_noise_data)
     dofgbyhand                = eval(dofgbyhand)
+
+
 
     if toutput:
         print('\n== Flagging SKAMPI Data == \n')
@@ -138,16 +144,35 @@ def main():
     # ---------------------------------------------------------------------------------------------
 
 
-    # Some hardcoded input
+    para_code_input      = RFIL.get_json('RFI_SETTINGS.json')
+
+    splitting            = para_code_input['data_handling']['splitting']
+    usedbinning          = para_code_input['data_handling']['usedbinning']
+    stats_type           = para_code_input['data_handling']['stats_type']
+    smooth_bound_kernel  = para_code_input['data_handling']['smooth_bound_kernel']
+
+
+    # Some hardcoded input for the S-Band survey scan's
     #
-    splitting            = [0,6000,-1]                        # split the spectrum into two sections (usefull for SKAMPI)
-    usedbinning          = [100,61]                           # carefull these setting cost time  need to check in RFI_lib is np splitt can generate 
-    stats_type           = ['madmean','madmean']              # define the type of statistic estimates used
-    smooth_bound_kernel  = [31,31]                            # smooth kernel for overall boundary range
+    #splitting            = [0,6000,-1]                        # split the spectrum into two sections (usefull for SKAMPI)
+    #usedbinning          = [100,61]                           # carefull these setting cost time  need to check in RFI_lib is np splitt can generate 
+    #stats_type           = ['madmean','madmean']              # define the type of statistic estimates used
+    #smooth_bound_kernel  = [31,31]                            # smooth kernel for overall boundary range
     
+    # lynn's setting
+    #
+    #splitting            = [0,-1]                             # split the spectrum into two sections (usefull for SKAMPI)
+    #usedbinning          = [8]                                # carefull these setting cost time  need to check in RFI_lib is np splitt can generate 
+    #stats_type           = ['madmean']                        # define the type of statistic estimates used
+    #smooth_bound_kernel  = [31]                               # smooth kernel for overall boundary range
+
+
     # smoothing process of the masking function
     #
-    smooth_type          = ['wiener','wiener']
+    #     smooth_type          = ['wiener','wiener']
+    #
+    smooth_type           = para_code_input['data_handling']['smooth_type']
+
     #
     # kernel_sizes and kernel_sequence_type for this is defined bellow
 
@@ -166,18 +191,22 @@ def main():
     bound_sigma          = [bound_sigma_input,bound_sigma_input]   # if edges of the spectrum to much eaten away increase # old setting: bound_sigma          = [3,3]
     flag_on              = eval(use_data)                          # only use noise diode off to generate flags ['ND0','ND1'] would do all
 
-    if flagprocessing == 'SEMIFAST':
-        kernel_sizes         = [7,30]                              # carefull these setting cost time 
-        kernel_sequence_type = ['middle_fast','middle_fast']       # optional middle_fast, fast, slow
-    elif flagprocessing == 'FAST':
-        kernel_sizes         = [7,13]                              # carefull these setting cost time  
-        kernel_sequence_type = ['fast','fast']                     # optional middle_fast, fast, slow
-    else:
-        kernel_sizes         = [100,500]                           # carefull these setting cost time  
-        kernel_sequence_type = ['slow','slow']                     # optional middle_fast, fast, slow
 
+    kernel_sizes          = para_code_input['flagprocessing'][flagprocessing]['kernel_sizes']
+    kernel_sequence_type  = para_code_input['flagprocessing'][flagprocessing]['kernel_sequence_type']
+
+    #if flagprocessing == 'SEMIFAST':
+    #    kernel_sizes         = [7,30]                              # carefull these setting cost time 
+    #    kernel_sequence_type = ['middle_fast','middle_fast']       # optional middle_fast, fast, slow
+    #elif flagprocessing == 'FAST':
+    #    kernel_sizes         = [7,13]                              # carefull these setting cost time  
+    #    kernel_sequence_type = ['fast','fast']                     # optional middle_fast, fast, slow
+    #else:
+    #    kernel_sizes         = [100,500]                           # carefull these setting cost time  
+    #    kernel_sequence_type = ['slow','slow']                     # optional middle_fast, fast, slow
 
     # --------------------------------------------
+
 
     # time the fg processing
     #
@@ -186,174 +215,206 @@ def main():
     full_new_mask = {}
     for d in timestamp_keys:
 
+             # select data base on input
+             #
+             if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type):
 
-            time_data       = obsfile[d][:]
-            freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
-            #
-            spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
+                time_data       = obsfile[d][:]
+                freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
+                #
+                spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
 
-            new_mask        = np.zeros(spectrum_data.shape).astype(bool)
+                new_mask        = np.zeros(spectrum_data.shape).astype(bool)
 
-            if toutput:
-                print('\tgenerate mask for : ',d.replace('timestamp',''),'\n')
-
-
-            # ---------------------------------------------------------------------------------------------
-            # Mask the first and last channel 
-            # ---------------------------------------------------------------------------------------------
-
-            new_mask[:,0]    = True                    # exclude the DC term of the FFT spectrum in the full spectrum
-            new_mask[:,-1]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
- 
-
-            # ---------------------------------------------------------------------------------------------
-            # spectrum flagging individual times (takes care of ampl) DO NOT USE THE NOISE DIODE DATA HERE
-            #
-            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
-            # ---------------------------------------------------------------------------------------------
-            if time_sigma != 0:
-
-                if RFIL.str_in_strlist(d,flag_on):
-
-                    median_over_freq_per_time = np.median(spectrum_data,axis=1)
-                    time_mask                 = RFIL.boundary_mask_data(median_over_freq_per_time,median_over_freq_per_time,sigma=time_sigma,stats_type='madmean',do_info=False).astype(int)
-
-                    for i in range(len(time_mask)):
-                        if time_mask[i] == 1:
-                            new_mask[i,:] = True
-
-            # ---------------------------------------------------------------------------------------------
-            # spectrum flagging by input 
-            #
-            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
-            # ---------------------------------------------------------------------------------------------
-
-            if len(dofgbyhand) > 0:
-
-                az = obsfile[d.replace('timestamp','azimuth')][:]
-                el = obsfile[d.replace('timestamp','elevation')][:]
-
-                for i in range(len(dofgbyhand)):
-                    new_mask[dofgbyhand[i][0]:dofgbyhand[i][1],:] = True
-                    if toutput:
-                        print('\t- Hand FG in time')
-                        print('\t\t idx: ',dofgbyhand[i])
-                        # time info
-                        time_range  = Time([time_data[dofgbyhand[i][0]],time_data[dofgbyhand[i][1]]],format='unix')
-                        print('\t\t timerange: ',time_range.to_value('isot'))
-                        print('\t\t azimut range: ',az[dofgbyhand[i][0]],az[dofgbyhand[i][1]])
-                        print('\t\t elevation range: ',el[dofgbyhand[i][0]],el[dofgbyhand[i][1]])
+                if toutput:
+                    print('\tgenerate mask for : ',d.replace('timestamp',''),'\n')
 
 
-            # ---------------------------------------------------------------------------------------------
-            # spectrum flagging by saturation information 
-            #
-            # (flagged times will not be used in the spectrum flagging and is present in the final mask)
-            # ---------------------------------------------------------------------------------------------
+                # ---------------------------------------------------------------------------------------------
+                # Mask the first and last channel 
+                # ---------------------------------------------------------------------------------------------
 
-            if saturation_fg_sigma > 0:
-
-                satur = obsfile[d.replace('timestamp','saturated_samples')][:]
-                satur = satur.flatten()
-
-                time_mask_sat = RFIL.boundary_mask_data(satur,satur,sigma=saturation_fg_sigma,stats_type='madmedian',do_info=False).astype(int)
-
-                for i in range(len(time_mask_sat)):
-                        if time_mask_sat[i] == 1:
-                            new_mask[i,:] = True
+                new_mask[:,0]    = True                    # exclude the DC term of the FFT spectrum in the full spectrum
+                new_mask[:,-1]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
 
 
-            # ---------------------------------------------------------------------------------------------
-            # flag individual each spectrum by applying denoising with a lot of smoothing
-            # ---------------------------------------------------------------------------------------------
-            if donotflag:
+                # ---------------------------------------------------------------------------------------------
+                # spectrum flagging individual times (takes care of ampl) DO NOT USE THE NOISE DIODE DATA HERE
+                #
+                # (flagged times will not be used in the spectrum flagging and is present in the final mask)
+                # ---------------------------------------------------------------------------------------------
+                if time_sigma != 0:
 
-                if RFIL.str_in_strlist(d,flag_on):
+                    if RFIL.str_in_strlist(d,flag_on):
 
-                    if toutput:
-                        print('\tgenerate flags for : ',d.replace('timestamp',''),'\n')
+                        median_over_freq_per_time = np.median(spectrum_data,axis=1)
+                        time_mask                 = RFIL.boundary_mask_data(median_over_freq_per_time,median_over_freq_per_time,sigma=time_sigma,stats_type='madmean',do_info=False).astype(int)
+
+                        for i in range(len(time_mask)):
+                            if time_mask[i] == 1:
+                                new_mask[i,:] = True
+
+                # ---------------------------------------------------------------------------------------------
+                # spectrum flagging by input 
+                #
+                # (flagged times will not be used in the spectrum flagging and is present in the final mask)
+                # ---------------------------------------------------------------------------------------------
+
+                if len(dofgbyhand) > 0:
+
+                    az = obsfile[d.replace('timestamp','azimuth')][:]
+                    el = obsfile[d.replace('timestamp','elevation')][:]
+
+                    for i in range(len(dofgbyhand)):
+                        new_mask[dofgbyhand[i][0]:dofgbyhand[i][1],:] = True
+                        if toutput:
+                            print('\t- Hand FG in time')
+                            print('\t\t idx: ',dofgbyhand[i])
+                            # time info
+                            time_range  = Time([time_data[dofgbyhand[i][0]],time_data[dofgbyhand[i][1]]],format='unix')
+                            print('\t\t timerange: ',time_range.to_value('isot'))
+                            print('\t\t azimut range: ',az[dofgbyhand[i][0]],az[dofgbyhand[i][1]])
+                            print('\t\t elevation range: ',el[dofgbyhand[i][0]],el[dofgbyhand[i][1]])
 
 
-                    if ncpus > 1:
-                            # Setting runs on mutiple cpu 
-                            #
-                            t_steps = spectrum_data.shape[0]
-                            idx     = 0
-                            step    = int(t_steps / ncpus) + 1
-                            #
-                            for i in range(step):
-                                idxq       = 0
-                                mmque      = []
-                                jobs       = []
-                                result_dic = {}
-                                for cps in range(ncpus):
-                                    if idx < t_steps:
-                                        mmque.append(multiprocessing.Queue())
-                                        if toutput:
-                                            print('Fan out jobs use ',ncpus,' CPU: ',idx,' ',d.replace('timestamp',''))
 
-                                        fg_spec            = spectrum_data[idx,1:]      # exclude the DC term for the FG estimates
 
-                                        # here check if time has been flagged
-                                        check_time_fg = np.sum(new_mask[idx].astype(int))
-                                        if check_time_fg != new_mask.shape[1]:                                        
-                                            cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
-                                        else:
-                                            cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
 
-                                        # Here do the multiprocessing
-                                        jo = multiprocessing.Process(target=RFIL.flag_spec_by_smoothing, args=(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
-                                                                                 smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx,mmque[idxq],idxq))
-                                        jobs.append(jo)
-                                        jo.start()
-                                        idxq += 1
-                                    #
-                                    idx += 1
+                # ---------------------------------------------------------------------------------------------
+                # spectrum flagging by saturation information 
+                #
+                # (flagged times will not be used in the spectrum flagging and is present in the final mask)
+                # ---------------------------------------------------------------------------------------------
 
-                                # update the directory
-                                for k in range(len(jobs)):
-                                        result_dic.update(mmque[k].get())
+                if saturation_fg_sigma > 0:
 
-                                # wait until all the jobs are done
-                                for j in jobs:
-                                        jo.join()
+                    satur = obsfile[d.replace('timestamp','saturated_samples')][:]
+                    satur = satur.flatten()
 
-                                # get the results into a final mask
-                                rs = result_dic.keys()
-                                for k in result_dic:
-                                        new_mask[result_dic[k][0]][1:] = result_dic[k][1]
+                    time_mask_sat = RFIL.boundary_mask_data(satur,satur,sigma=saturation_fg_sigma,stats_type='madmedian',do_info=False).astype(int)
 
+                    for i in range(len(time_mask_sat)):
+                            if time_mask_sat[i] == 1:
+                                new_mask[i,:] = True
+
+
+
+                # ---------------------------------------------------------------------------------------------
+                # flagging by scan velocity 
+                #
+                # (flagged times will not be used in the spectrum flagging and is present in the final mask)
+                # ---------------------------------------------------------------------------------------------
+
+                if scan_velo_fg_sigma > 0:
+
+                    if rad_dec_scan == False:
+                        sc_data_x = obsfile[d.replace('timestamp','azimuth')][:]
+                        sc_data_y = obsfile[d.replace('timestamp','elevation')][:]
                     else:
+                        sc_data_x = obsfile[d.replace('timestamp','dec')][:]
+                        sc_data_y  = obsfile[d.replace('timestamp','ra')][:]
 
-                        # go through all the time stamps
-                        #
-                        for s in range(spectrum_data.shape[0]):
 
-                            fg_spec            = spectrum_data[s,1:] # exclude the DC term for the FG estimates
-                            
-                            # check if time has been flagged
+                    scan_velo_vec = np.sqrt(np.abs(np.gradient(sc_data_x)) + np.abs(np.gradient(sc_data_y)))
+
+                    time_mask_s_velo = RFIL.boundary_mask_data(scan_velo_vec,scan_velo_vec,sigma=scan_velo_fg_sigma,stats_type='madmedian',do_info=False).astype(int)
+
+                    for i in range(len(time_mask_s_velo)):
+                            if time_mask_s_velo[i] == 1:
+                                new_mask[i,:] = True
+
+
+                # ---------------------------------------------------------------------------------------------
+                # flag individual each spectrum by applying denoising with a lot of smoothing
+                # ---------------------------------------------------------------------------------------------
+                if donotflag:
+
+                    if RFIL.str_in_strlist(d,flag_on):
+
+                        if toutput:
+                            print('\tgenerate flags for : ',d.replace('timestamp',''),'\n')
+
+
+                        if ncpus > 1:
+                                # Setting runs on mutiple cpu 
+                                #
+                                t_steps = spectrum_data.shape[0]
+                                idx     = 0
+                                step    = int(t_steps / ncpus) + 1
+                                #
+                                for i in range(step):
+                                    idxq       = 0
+                                    mmque      = []
+                                    jobs       = []
+                                    result_dic = {}
+                                    for cps in range(ncpus):
+                                        if idx < t_steps:
+                                            mmque.append(multiprocessing.Queue())
+                                            if toutput:
+                                                print('Fan out jobs use ',ncpus,' CPU: ',idx,' ',d.replace('timestamp',''))
+
+                                            fg_spec            = spectrum_data[idx,1:]      # exclude the DC term for the FG estimates
+
+                                            # here check if time has been flagged
+                                            check_time_fg = np.sum(new_mask[idx].astype(int))
+                                            if check_time_fg != new_mask.shape[1]:                                        
+                                                cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+                                            else:
+                                                cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
+
+                                            # Here do the multiprocessing
+                                            jo = multiprocessing.Process(target=RFIL.flag_spec_by_smoothing, args=(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
+                                                                                     smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx,mmque[idxq],idxq))
+                                            jobs.append(jo)
+                                            jo.start()
+                                            idxq += 1
+                                        #
+                                        idx += 1
+
+                                    # update the directory
+                                    for k in range(len(jobs)):
+                                            result_dic.update(mmque[k].get())
+
+                                    # wait until all the jobs are done
+                                    for j in jobs:
+                                            jo.join()
+
+                                    # get the results into a final mask
+                                    rs = result_dic.keys()
+                                    for k in result_dic:
+                                            new_mask[result_dic[k][0]][1:] = result_dic[k][1]
+
+                        else:
+
+                            # go through all the time stamps
                             #
-                            check_time_fg = np.sum(new_mask[s].astype(int))
-                            if check_time_fg != new_mask.shape[1]:                                        
-                                cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
-                            else:
-                                cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
+                            for s in range(spectrum_data.shape[0]):
 
-                            # check timeing of process
-                            fg_t               = process_time()
+                                fg_spec            = spectrum_data[s,1:] # exclude the DC term for the FG estimates
 
-                            final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
-                                                                                 smooth_type,usedbinning,bound_sigma,stats_type,\
-                                                                                 smooth_bound_kernel,clean_bins)
-                            new_mask[s][1:]    = final_sp_mask
+                                # check if time has been flagged
+                                #
+                                check_time_fg = np.sum(new_mask[s].astype(int))
+                                if check_time_fg != new_mask.shape[1]:                                        
+                                    cleanup_spec_mask  = np.zeros(len(fg_spec)).astype(bool)
+                                else:
+                                    cleanup_spec_mask  = np.ones(len(fg_spec)).astype(bool)
 
-                            if toutput:
-                                # do some time measures
-                                elapsed_time = process_time() - fg_t
-                                print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
+                                # check timeing of process
+                                fg_t               = process_time()
+
+                                final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
+                                                                                     smooth_type,usedbinning,bound_sigma,stats_type,\
+                                                                                     smooth_bound_kernel,clean_bins)
+                                new_mask[s][1:]    = final_sp_mask
+
+                                if toutput:
+                                    # do some time measures
+                                    elapsed_time = process_time() - fg_t
+                                    print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
 
 
-            full_new_mask[d.replace('timestamp','')]      = new_mask
+                full_new_mask[d.replace('timestamp','')]      = new_mask
 
 
 
@@ -745,8 +806,11 @@ def new_argument_parser():
     parser.add_option('--DATA_FILE', dest='datafile', type=str,
                       help='DATA - HDF5 file of the Prototyp')
 
-    parser.add_option('--USEDATA', dest='usedata', type=str,default="['ND0']",
-                      help='use data noise diode off and on "[\'ND0\',\'ND1\']", default is [\'ND0\']')
+    parser.add_option('--USEDATA', dest='usedata', type=str,default="['P0','P1']",
+                      help='use data to flag default is "[\'P0\',\'P1\']", for Stokes use e.g. \"[\'S0\']\"')
+
+    parser.add_option('--USENOISEDATA', dest='usenoisedata', type=str,default="['ND0']",
+                      help='use data noise diode on and off "[\'ND0\',\'ND1\']", default is \"[\'ND0\']\"')
 
     parser.add_option('--DONOTFLAG', dest='donotflag', action='store_false',
                       default=True,help='Do not flag the data.')
@@ -765,6 +829,12 @@ def new_argument_parser():
 
     parser.add_option('--DO_FG_BOUNDARY_SIGMA', dest='bound_sigma_input', type=float, default=3,
                       help='if the spectrum is mask to much at the edges increase. [default = 3 sigma]')
+
+    parser.add_option('--DO_FG_VELO_SCAN_SIGMA', dest='scan_velo_fg_sigma', type=float, default=0,
+                      help='determine flags based on the scan velocity outliere on sky. [default = 0 is off use e.g. = 6]')
+
+    parser.add_option('--DO_AZEL_SCAN', dest='rad_dec_scan', action='store_false',
+                      default=True,help='Switch to Azimuth-Elevation scan type to be used for velocity outliere flag.')
 
     parser.add_option('--DOPLOT_FINAL_SPEC', dest='doplot_final_spec', action='store_true',
                       default=False,help='Plot the final spectrum after Flagging')

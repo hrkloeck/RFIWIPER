@@ -12,7 +12,7 @@
 	    "kernel_sequence_type": ["middle_fast","middle_fast"] 
 	    },
 	"FAST":{
-	    "kernel_sizes": [7,13],
+	    "kernel_sizes": [7,12],
 	    "kernel_sequence_type": ["fast","fast"] 
 	    },
 	"SLOW":{

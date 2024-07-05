@@ -22,6 +22,8 @@ from copy import deepcopy
 from scipy.signal import convolve2d,correlate
 from scipy import stats
 import time
+import json
+
 # import heat from submodule
 import sys
 sys.path.append("heat/")
@@ -1179,4 +1181,14 @@ def str_in_strlist(string,strlist):
             isthere = True 
             break
     return isthere
+
     
+def get_json(filename,homedir=''):
+    """
+    get json info
+    """
+
+    with open(homedir+filename) as f:
+        jsondata = json.load(f)
+
+    return jsondata

@@ -1,0 +1,23 @@
+{
+    "data_handling":{
+	"splitting": [0,6000,-1],
+	"usedbinning": [100,61],
+	"stats_type": ["madmean","madmean"],
+	"smooth_bound_kernel": [31,31],
+	"smooth_type": ["wiener","wiener"]
+	},
+    "flagprocessing":{
+	"SEMIFAST":{
+	    "kernel_sizes": [7,30],
+	    "kernel_sequence_type": ["middle_fast","middle_fast"] 
+	    },
+	"FAST":{
+	    "kernel_sizes": [7,13],
+	    "kernel_sequence_type": ["fast","fast"] 
+	    },
+	"SLOW":{
+	    "kernel_sizes": [100,500],
+	    "kernel_sequence_type": ["slow","slow"] 
+	    }
+    }
+}

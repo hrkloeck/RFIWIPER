@@ -27,7 +27,7 @@ from astropy import units as u
 import copy
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from time import process_time, perf_counter
+from time import process_time, perf_counter, strftime
 import RFI_LIB_SCANS as RFIL
 # import heat from submodule
 import sys
@@ -105,6 +105,8 @@ def main():
     # use Heat as backend
     heat_backend              = opts.heat_backend
     heat_device               = opts.heat_device
+    save_intermediate         = opts.save_intermediate
+
 
     log.warning(f'Heat backend: {heat_backend}, device: {heat_device}')
     if heat_backend or heat_device is not None:
@@ -112,6 +114,12 @@ def main():
         donotncpus = True
     if heat_device is not None:
         heat_backend = True
+    if save_intermediate and heat_backend:
+        job_started = strftime("%Y%m%d-%H%M")
+        log.warning(f'Intermediate results will be stored with timestamp: {job_started}')
+    else:
+        job_started = None
+
 
     do_rfi_report             = opts.do_rfi_report
     do_rfi_report_sigma       = opts.do_rfi_report_sigma
@@ -254,7 +262,10 @@ def main():
                 #
                 spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
 
-                new_mask        = np.zeros(spectrum_data.shape).astype(bool)
+                if heat_backend:
+                    new_mask        = ht.zeros(spectrum_data.shape, split=0, device=heat_device).astype(ht.bool)
+                else:
+                    new_mask        = np.zeros(spectrum_data.shape).astype(bool)
 
                 if toutput:
                     print('\tgenerate mask for : ',d.replace('timestamp',''),'\n')
@@ -263,7 +274,6 @@ def main():
                 # ---------------------------------------------------------------------------------------------
                 # Mask the first and last channel 
                 # ---------------------------------------------------------------------------------------------
-
                 new_mask[:,0]    = True                    # exclude the DC term of the FFT spectrum in the full spectrum
                 new_mask[:,-1]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
 
@@ -274,6 +284,8 @@ def main():
                 # (flagged times will not be used in the spectrum flagging and is present in the final mask)
                 # ---------------------------------------------------------------------------------------------
                 if time_sigma != 0:
+                    if heat_backend:
+                        raise NotImplementedError("Heat backend not yet implemented for this time_sigma != 0")
 
                     if RFIL.str_in_strlist(d,flag_on):
 
@@ -291,6 +303,8 @@ def main():
                 # ---------------------------------------------------------------------------------------------
 
                 if len(dofgbyhand) > 0:
+                    if heat_backend:
+                        raise NotImplementedError("Heat backend not yet implemented for dofgbyhand")
 
                     az = obsfile[d.replace('timestamp','azimuth')][:]
                     el = obsfile[d.replace('timestamp','elevation')][:]
@@ -313,6 +327,8 @@ def main():
                 # ---------------------------------------------------------------------------------------------
 
                 if saturation_fg_sigma > 0:
+                    if heat_backend:
+                        raise NotImplementedError("Heat backend not yet implemented for saturation_fg_sigma")
 
                     satur = obsfile[d.replace('timestamp','saturated_samples')][:]
                     satur = satur.flatten()
@@ -332,6 +348,8 @@ def main():
                 # ---------------------------------------------------------------------------------------------
 
                 if scan_velo_fg_sigma > 0:
+                    if heat_backend:
+                        raise NotImplementedError("Heat backend not yet implemented for scan_velo_fg_sigma")
 
                     if rad_dec_scan == False:
                         sc_data_x = obsfile[d.replace('timestamp','azimuth')][:]
@@ -409,7 +427,6 @@ def main():
                                     rs = result_dic.keys()
                                     for k in result_dic:
                                             new_mask[result_dic[k][0]][1:] = result_dic[k][1]
-
                         else:
                             if heat_backend:
                                 # if GPUS are available, set device to GPU
@@ -420,7 +437,6 @@ def main():
                                 # Heat backend supports only 'hamming' for now
                                 # TODO: implement support for other window functions
                                 smooth_type = ['hamming','hamming']                 
-                                new_mask = ht.array(new_mask, split=0, device=heat_device)
                                 fg_spectra = ht.array(spectrum_data[:,1:], split=0, device=heat_device) # exclude the DC term for the FG estimates
                                 freq = ht.array(freq, split=None, device=heat_device)
                                 # check what time has been flagged
@@ -433,7 +449,7 @@ def main():
                                 log.warning('Heat backend: starting flagging')
                                 fg_t = process_time()
                                 fg_t_perf = perf_counter()
-                                final_mask = RFIL.flag_spec_by_smoothing_ht(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins)
+                                final_mask = RFIL.flag_spec_by_smoothing_ht(fg_spectra, freq, cleanup_spectra_mask, splitting, kernel_sizes, kernel_sequence_type, smooth_type, usedbinning, bound_sigma, stats_type, smooth_bound_kernel, clean_bins, save_intermediate, job_started)
                                 new_mask = final_mask # TODO: this is probably unnecessary  
                                 if toutput:
                                     elapsed_time = process_time() - fg_t
@@ -951,6 +967,8 @@ def new_argument_parser():
                       default=False, help='Use the Heat backend for parallelization and GPU support')
     parser.add_option('--HEAT_DEVICE', dest='heat_device', type=str, default=None,
                       help='Device to use for Heat backend (cpu or gpu)')
+    parser.add_option('--DOSAVEINTERMEDIATE', dest='save_intermediate', action='store_true',
+                      default=False, help='Save intermediate Heat-backend results to disk for correctness tests.')
     return parser
 
 

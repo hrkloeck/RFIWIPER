@@ -613,7 +613,7 @@ def flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes
 
     return final_sp_mask
 
-def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,kernel_sizes,kernel_sequence_type,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx=0):
+def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,kernel_sizes,kernel_sequence_type,smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx=0, save_intermediate=False, job_started=None):
     """
     specially for doing  azimuth scans in batch
 
@@ -641,6 +641,10 @@ def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,ker
         list of kernel sizes for boundary smoothing
     idx : int
         index of the spectrum
+    save_intermediate : bool
+        flag to save intermediate results for later testing
+    job_started : str or None
+        time when the job started, used to name intermediate files
     """
     from time import process_time
 

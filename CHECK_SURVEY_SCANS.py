@@ -641,6 +641,8 @@ def main():
                     ax.set_ylim(*plt_fspec_yrange)
 
                 if pltsave:
+                    if heat_backend:
+                        plt_fname = data_file.replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC_HT_'+heat_device
                     plt_fname = data_file.replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC'
                     plt_fname = filenamecounter(plt_fname,extention='.png')
                     fig.savefig(plt_fname,dpi=DPI)

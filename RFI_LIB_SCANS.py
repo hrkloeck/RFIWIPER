@@ -647,7 +647,7 @@ def flag_spec_by_smoothing_ht(fg_spectra,freq,cleanup_spectra_mask,splitting,ker
         time when the job started, used to name intermediate files
     """
     from time import process_time
-
+    print("In flag_spec_by_smoothing_ht: kernel_sizes, kernel_sequence_type, smooth_type = ", kernel_sizes, kernel_sequence_type, smooth_type)
     need_flagging = ht.sum(cleanup_spectra_mask, axis=1) != cleanup_spectra_mask.shape[1]
     fg_spectra = fg_spectra[need_flagging]
     cleanup_spectra_mask_subset = cleanup_spectra_mask[need_flagging]
@@ -707,10 +707,10 @@ def batch_convolve_1d_data(data,smooth_type='hamming',smooth_kernel=3):
         raise ValueError(f"Unknown smoothing type: {smooth_type}")
     
     # batch-convolve each timestamp with the smoothing kernel
-    start_heat = perf_counter()
+    #start_heat = perf_counter()
     sm_data = ht.convolve(data, sm_kernel, mode='same') / sm_kernel.sum()
-    end_heat = perf_counter()
-    log.warning(f"Heat batch-convolution took {end_heat - start_heat} seconds")
+    #end_heat = perf_counter()
+    #log.warning(f"Heat batch-convolution took {end_heat - start_heat} seconds")
     # # just for testing: scipy batch-convolve
     # sm_kernel_np = sm_kernel.cpu().numpy()
     # data_np = data.larray.cpu().numpy()
@@ -872,10 +872,10 @@ def flag_smoothing_ht(freq,spec,spec_mask,smooth_type='wiener',kernel_sizes=2,ke
         # smooth the original spectrum and subtract it from the
         # original dataset
         #
-        start = time.perf_counter()
+#        start = time.perf_counter()
         sm_data   = batch_convolve_1d_data(spec,smooth_type=smooth_type,smooth_kernel=k)
-        end = time.perf_counter()
-        log.warning(f"Time to convolve with kernel size {k}: {end-start} seconds")
+#        end = time.perf_counter()
+#        log.warning(f"Time to convolve with kernel size {k}: {end-start} seconds")
         # residuals
         resi_data = spec - sm_data
 
@@ -1056,10 +1056,7 @@ def checkerstats_ht(data, subspectra, stats_type, select=None):
         from astropy.stats import mad_std
         #
         data_mean      = np.mean(local_sp_data,axis=-1) 
-        start = time.perf_counter()
         data_std       = mad_std(local_sp_data,axis=-1)
-        end = time.perf_counter()
-        log.warning(f"In checkerstats_ht: mad_std: {end - start:0.7f} seconds")
 
     elif stats_type == 'madmedian':
         #

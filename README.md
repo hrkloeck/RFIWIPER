@@ -132,11 +132,16 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 ```
 python -W ignore SKAMPI_RFI_TOOL.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTHEAVYFLAG --DO_FG_TIME_AUTO_SIGMA=5 --DO_FG_VELO_SCAN_SIGMA=6 --DO_RFI_STD_MEAN_SIGMA=3 --DO_BSLF_SIGMA=10 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK 
 ```
+Waterfall Spectrum per polarisation (P0/P1)
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT_ALL.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT_ALL.png" width=25%>
+
+Averaged Spectrum (mean) and the standart derivation as error's in red per polarisation (P0/P1)
 
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC_ALL.png" width=25%>
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC_ALL.png" width=25%>
-![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT_ALL.png" width=25%>
-![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT_ALL.png" width=25%>
+
 
 - Now do the **full heavy flagging**
 

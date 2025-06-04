@@ -58,10 +58,14 @@ def data_stats(data,stats_type='mean',accur=100):
         #
         # Just as a tool to help debugging
         #
-        sigma  = 3
-        cuts1  = np.mean(data) - sigma * np.std(data)
-        cuts2  = np.mean(data) + sigma * np.std(data)
 
+        plt_data_mean, plt_data_std, plt_stats_type = data_stats(data,stats_type='madmedian',accur=100)
+        #
+        sigma  = 6
+        #
+        cuts1  = plt_data_mean - sigma * plt_data_std
+        cuts2  = plt_data_mean + sigma * plt_data_std
+        
         print('%e'%cuts1,'--','%e'%cuts2)
         
         fig, ax = plt.subplots()

@@ -470,7 +470,7 @@ def main():
                             print(interpol_data_info)
                         print('\t- FG channels on baseline fit ',interpol_data_info[std_mean_ratio_min])
                         print('\t\t flagged: ',bslf_fg_chan,'channels above ',freq[set_lower_limit_to_fg]/1E9,' [GHz]')
-                    
+
                 # ---------------------------------------------------------------------------------------------
                 # flag individual each spectrum by applying denoising with a lot of smoothing
                 # ---------------------------------------------------------------------------------------------

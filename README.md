@@ -10,16 +10,20 @@ The first test dataset is EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 and is av
 
 
 ```
-python CHECK_SURVEY_SCANS.py -h
+python SKAMPI_RFI_TOOL.py -h
 
-Usage: CHECK_SURVEY_SCANS.py [options]
+Usage: SKAMPI_RFI_TOOL.py [options]
 
 Options:
-  -h, --help            show this help message and exit
+
+-h, --help            show this help message and exit
   --DATA_FILE=DATAFILE  DATA - HDF5 file of the Prototyp
-  --USEDATA=USEDATA     use data noise diode off and on "['ND0','ND1']",
-                        default is ['ND0']
-  --DONOTFLAG           Do not flag the data.
+  --USEDATA=USEDATA     use data to flag default is "['P0','P1']", for Stokes
+                        use e.g. "['S0']"
+  --USENOISEDATA=USENOISEDATA
+                        use data noise diode on and off "['ND0','ND1']",
+                        default is "['ND0']"
+  --DONOTHEAVYFLAG      Do not use the time heavy flag procedure.
   --PROCESSING_TYPE=FLAGPROCESSING
                         setting how accurate/much time the flagging proceed.
                         FAST, SEMIFAST, SLOW, default is SEMIFAST
@@ -29,9 +33,23 @@ Options:
   --DO_FG_TIME_AUTO_SIGMA=AUTO_TIME_FG_SIGMA
                         automatically determine bad time use threshold.
                         default = 0 is off use e.g. = 5
+  --DO_FG_SATURATION_SIGMA=SATURATION_FG_SIGMA
+                        use the saturation information to flag. default = 0 is
+                        off use e.g. = 3
   --DO_FG_BOUNDARY_SIGMA=BOUND_SIGMA_INPUT
-                        if the spectram is maske to much at teh edges
-                        increase. [default = 3 sigma]
+                        if the spectrum is mask to much at the edges increase.
+                        [default = 3 sigma]
+  --DO_FG_VELO_SCAN_SIGMA=SCAN_VELO_FG_SIGMA
+                        determine flags based on the scan velocity outliere on
+                        sky. [default = 0 is off use e.g. = 6]
+  --DO_RFI_STD_MEAN_SIGMA=FLAG_RFI_STD_MEAN_SIGMA
+                        determine flags based on the linear relation of noise
+                        and power. [default = 0 is off use e.g. = 3]
+  --DO_BSLF_SIGMA=FLAG_BSLF_SIGMA
+                        determine flags based on spectral baseline fit.
+                        [default = 0 is off use e.g. = 10]
+  --DO_AZEL_SCAN        Switch to Azimuth-Elevation scan type to be used for
+                        velocity outliere flag.
   --DOPLOT_FINAL_SPEC   Plot the final spectrum after Flagging
   --FINAL_SPEC_YRANGE=FSPEC_YRANGE
                         [ymin,ymax]
@@ -55,8 +73,11 @@ Options:
   --DO_RFI_REPORT=DO_RFI_REPORT
                         provides info and SPWD plots. Input is number of SPWD
                         [default = -1, use e.g. 8]
+  --DO_RFI_REPORT_SIGMA=DO_RFI_REPORT_SIGMA
+                        set the y-range of the SPWDs plots of the RFI report
+                        [default = 5]
   --HELP                Show info on input
-
+  
 ```
 
 
@@ -66,7 +87,7 @@ Options:
 - Just look at the **original dataset without flagging**
 
 ```
-python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOSAVEPLOT
+python SKAMPI_RFI_TOOL.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTHEAVYFLAG --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOSAVEPLOT
 ```
 
 Waterfall Spectrum per polarisation (P0/P1)
@@ -83,7 +104,7 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 - Just **flag by hand** some times
 
 ```
-python CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTFLAG --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOPLOT_FINAL_WATERFALL --DO_FG_TIME_BY_HAND='[[0,40],[1695,1750],[3405,3455],[5114,5162],[6820,6875]]' --DOSAVEPLOT
+python SKAMPI_RFI_TOOL.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTHEAVYFLAG --DOPLOT_FINAL_SPEC --FINAL_SPEC_YRANGE='[-2E12,2E12]' --DOPLOT_FINAL_WATERFALL --DO_FG_TIME_BY_HAND='[[0,40],[1695,1750],[3405,3455],[5114,5162],[6820,6875]]' --DOSAVEPLOT
 ```
 
 This also provides some output e.g. for the first entry of the --DO_FG_TIME_BY_HAND settings
@@ -106,12 +127,22 @@ Averaged Spectrum (mean) and the standart derivation as error's in red per polar
 ![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC_HFG.png" width=25%>
 
 
+- Now lets do eveything **except** the heavy flagging 
 
-- Now do the **full flagging**
+```
+python -W ignore SKAMPI_RFI_TOOL.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DONOTHEAVYFLAG --DO_FG_TIME_AUTO_SIGMA=5 --DO_FG_VELO_SCAN_SIGMA=6 --DO_RFI_STD_MEAN_SIGMA=3 --DO_BSLF_SIGMA=10 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK 
+```
+
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_SPEC_ALL.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_SPEC_ALL.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P0_ND0_WFPLT_ALL.png" width=25%>
+![]()<img src="Plots/EDD_2023-05-19T05_42_23.848010UTC_yWRaJ_scan_000_P1_ND0_WFPLT_ALL.png" width=25%>
+
+- Now do the **full heavy flagging**
 
 ```
 
-python -W ignore CHECK_SURVEY_SCANS.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DO_FG_TIME_AUTO_SIGMA=5 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK --DONOTCPUS
+python -W ignore SKAMPI_RFI_TOOL.py --DATA_FILE=EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 --DO_FG_TIME_AUTO_SIGMA=5 --DOPLOT_FINAL_WATERFALL --DOPLOT_FINAL_SPEC --DOSAVEPLOT --DOSAVEMASK=FULL_FLAG_MASK --DONOTCPUS
 
 ```
 

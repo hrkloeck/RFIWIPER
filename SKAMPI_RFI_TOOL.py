@@ -70,6 +70,7 @@ def main():
     data_file                 = opts.datafile
     use_data                  = opts.usedata
     use_noise_data            = opts.usenoisedata
+    use_scan                  = opts.usescan
     donotflag                 = opts.donotflag
     flagprocessing            = opts.flagprocessing
     dofgbyhand                = opts.hand_time_fg
@@ -95,14 +96,16 @@ def main():
     do_rfi_report_sigma       = opts.do_rfi_report_sigma
     scan_velo_fg_sigma        = opts.scan_velo_fg_sigma
     rad_dec_scan              = opts.rad_dec_scan
+        
 
-
-    # define hat to plot
+    # define what to plot
     #
-    use_data_fg               = eval(use_data)
-    plot_type                 = eval(use_noise_data)
-    dofgbyhand                = eval(dofgbyhand)
+    use_data_fg               = RFIL.cleanup_strg_input(use_data)
+    use_noise_data              = RFIL.cleanup_strg_input(use_noise_data)
+    use_scan                   = RFIL.cleanup_strg_input(use_scan)
 
+    plot_type                 = use_noise_data
+    dofgbyhand                = eval(dofgbyhand)
 
 
     if toutput:
@@ -127,10 +130,18 @@ def main():
     timestamp_keys       = findkeys(obsfile,keys=['scan','timestamp'],exactmatch=True)
     #
     spectrum_keys        = findkeys(obsfile,keys=['scan','spectrum'],exactmatch=True)
-    # #########  
+    #    
+    if len(use_scan) == 0:
+        scan_keys = []
+        for k in timestamp_keys:
+            scan_keys.append(k.split('/')[1])
+        scan_keys  = np.unique(scan_keys)
+    else:
+        scan_keys  = np.unique(use_scan)
     #
+    # #########  
 
-
+        
     # ---------------------------------------------------------------------------------------------
     # Define how many cpu are used 
     # ---------------------------------------------------------------------------------------------
@@ -185,6 +196,7 @@ def main():
     # --------------------------------------------
 
 
+    
     # time the fg processing
     #
     full_fg_time   = process_time()
@@ -192,9 +204,10 @@ def main():
     full_new_mask = {}
     for d in timestamp_keys:
 
+             #
              # select data base on input
              #
-             if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type):
+             if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
 
                 time_data       = obsfile[d][:]
                 freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
@@ -204,7 +217,7 @@ def main():
                 new_mask        = np.zeros(spectrum_data.shape).astype(bool)
 
                 if toutput:
-                    print('\tgenerate mask for : ',d.replace('timestamp',''),'\n')
+                    print('\n\tgenerate mask for : ',d.replace('timestamp',''),'\n')
 
 
                 # ---------------------------------------------------------------------------------------------
@@ -304,7 +317,6 @@ def main():
                     else:
                         sc_data_x = obsfile[d.replace('timestamp','dec')][:]
                         sc_data_y  = obsfile[d.replace('timestamp','ra')][:]
-
 
                     scan_velo_vec = np.sqrt(np.abs(np.gradient(sc_data_x)) + np.abs(np.gradient(sc_data_y)))
 
@@ -563,8 +575,6 @@ def main():
 
                 full_new_mask[d.replace('timestamp','')]      = new_mask
 
-
-
     # determine the full fg time required 
     full_fg_elapsed_time = process_time() - full_fg_time
     if toutput:
@@ -599,8 +609,11 @@ def main():
                 final_mask[d.replace('timestamp','')] = final_maskcomb
     else:
         print('CAUTON both channels have different dimensions')
+        print('Generate individual mask')
+        
         final_mask = {}
         for d in timestamp_keys:
+            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
                 final_mask[d.replace('timestamp','')] = full_new_mask[d.replace('timestamp','')]
 
     # ---------------------------------------------------------------------------------------------
@@ -656,7 +669,7 @@ def main():
         #
         for d in timestamp_keys:
 
-            if RFIL.str_in_strlist(d,plot_type):
+            if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
 
@@ -740,9 +753,8 @@ def main():
         import matplotlib
         #
         for d in timestamp_keys:
-
-            if RFIL.str_in_strlist(d,plot_type):
-
+            
+            if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
 
@@ -911,7 +923,8 @@ def main():
         with h5py.File(data_file, 'r+') as infile:
             for d in timestamp_keys: 
                 print('\tupdate mask: ',d.replace('timestamp',''))
-                infile[d.replace('timestamp','')+'mask'][:] = final_mask[d.replace('timestamp','')].astype(bool)
+                if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
+                    infile[d.replace('timestamp','')+'mask'][:] = final_mask[d.replace('timestamp','')].astype(bool)
         print('\n... old masks have been replaced!\n')
         sys.exit(-1)
     #
@@ -929,11 +942,13 @@ def main():
         with h5py.File(data_file, 'r+') as infile:
             for d in timestamp_keys: 
 
-                # get the mask
-                mask_data  = infile[d.replace('timestamp','mask')][:] 
+                if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                print('\terase mask: ',d.replace('timestamp',''))
-                infile[d.replace('timestamp','')+'mask'][:] = np.ones(mask_data.shape).astype(bool)
+                    # get the mask
+                    mask_data  = infile[d.replace('timestamp','mask')][:] 
+
+                    print('\terase mask: ',d.replace('timestamp',''))
+                    infile[d.replace('timestamp','')+'mask'][:] = np.ones(mask_data.shape).astype(bool)
 
         print('\n\t... masks have been erased!\n')
         sys.exit(-1)
@@ -959,6 +974,9 @@ def new_argument_parser():
     parser.add_option('--USENOISEDATA', dest='usenoisedata', type=str,default="['ND0']",
                       help='use data noise diode on and off "[\'ND0\',\'ND1\']", default is \"[\'ND0\']\"')
 
+    parser.add_option('--USESCAN', dest='usescan', type=str,default="[]",
+                      help='select scan to flag, default are all scans, to choose scan 000 and 001 use e.g. \"[\'000\',\'001\']\"')
+    
     parser.add_option('--DONOTHEAVYFLAG', dest='donotflag', action='store_false',
                       default=True,help='Do not use the time heavy flag procedure.')
    

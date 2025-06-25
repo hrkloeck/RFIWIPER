@@ -608,14 +608,24 @@ def difference_mask(mask,orgmask):
 def str_in_strlist(string,strlist):
     """
     """
-    isthere = False
-    for k in strlist:
-        if string.count(k) > 0:
-            isthere = True 
-            break
+    isthere    = False
+    spt_string = string.split('/')
+
+    for k in range(len(spt_string)):
+        for l in range(len(strlist)):                
+            if spt_string[k].count(strlist[l]) > 0:
+                isthere = True
+                break
+
     return isthere
 
-    
+
+def cleanup_strg_input(inputstrg):
+    """
+    convert the input string for selection into a list
+    """
+    return inputstrg.replace('[','').replace(']','').replace("'",'').split(',')
+
 def get_json(filename,homedir=''):
     """
     get json info

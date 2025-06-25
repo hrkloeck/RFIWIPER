@@ -23,6 +23,8 @@ Options:
   --USENOISEDATA=USENOISEDATA
                         use data noise diode on and off "['ND0','ND1']",
                         default is "['ND0']"
+  --USESCAN=USESCAN     select scan to flag, default are all scans, to choose
+                        scan 000 and 001 use e.g. "['000','001']"
   --DONOTHEAVYFLAG      Do not use the time heavy flag procedure.
   --PROCESSING_TYPE=FLAGPROCESSING
                         setting how accurate/much time the flagging proceed.

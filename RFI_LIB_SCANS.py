@@ -226,11 +226,12 @@ def boundary_range(xdata,ydata,usedbinning,ydata_mask,bound_sigma=3,stats_type='
 
     from time import process_time
 
+    
     # To get the upper and lower boundaries we used binned data and its statistics
     # 
     stats_x_data,stats_x_datastd             = checkerstats(xdata,usedbinning,stats_type)
     stats_y_data,stats_y_datastd,stats_mask  = checkerstats_sel(ydata,usedbinning,ydata_mask,stats_type)
-        
+
 
     # determine a sigma boundary
     #
@@ -501,7 +502,7 @@ def clean_up_1d_mask(mask,clean_bins=[[1,0,1]],setvalue=1):
 
 def checkerstats(data,split,stats_type):
 
-    sp_data = np.array_split(data,split)
+    sp_data = np.array_split(data,split,axis=0)
 
     if stats_type == 'madmadmedian':
         #

@@ -4,7 +4,8 @@
 	"usedbinning": [100,61],
 	"stats_type": ["madmean","madmean"],
 	"smooth_bound_kernel": [31,31],
-	"smooth_type": ["wiener","wiener"]
+	"smooth_type": ["wiener","wiener"],
+	"smooth_by_hand": ["hamming",31,"median",63,12,4096]
 	},
     "flagprocessing":{
 	"SEMIFAST":{

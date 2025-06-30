@@ -78,6 +78,7 @@ def main():
     saturation_fg_sigma       = opts.saturation_fg_sigma
     bound_sigma_input         = opts.bound_sigma_input
     flag_RFI_std_mean_sigma   = opts.flag_RFI_std_mean_sigma
+    flag_smooth_sigma         = opts.flag_smooth_sigma
     flag_bslf_sigma           = opts.flag_bslf_sigma
     doplot_final_spec         = opts.doplot_final_spec
     doplot_final_full_data    = opts.doplot_final_full_data
@@ -101,8 +102,8 @@ def main():
     # define what to plot
     #
     use_data_fg               = RFIL.cleanup_strg_input(use_data)
-    use_noise_data              = RFIL.cleanup_strg_input(use_noise_data)
-    use_scan                   = RFIL.cleanup_strg_input(use_scan)
+    use_noise_data            = RFIL.cleanup_strg_input(use_noise_data)
+    use_scan                  = RFIL.cleanup_strg_input(use_scan)
 
     plot_type                 = use_noise_data
     dofgbyhand                = eval(dofgbyhand)
@@ -165,11 +166,20 @@ def main():
     #
     para_code_input      = RFIL.get_json('RFI_SETTINGS.json')
 
+    # these parameters are used for the heavyflag option
     splitting            = para_code_input['data_handling']['splitting']
     usedbinning          = para_code_input['data_handling']['usedbinning']
     stats_type           = para_code_input['data_handling']['stats_type']
     smooth_bound_kernel  = para_code_input['data_handling']['smooth_bound_kernel']
 
+    # there is a handflag option with the follwong parameter
+    # that does a single step of the heavyflag
+    smoo_kernel_type           = para_code_input['data_handling']['smooth_by_hand'][0]
+    smoo_kernel                = para_code_input['data_handling']['smooth_by_hand'][1]
+    smoo_boundary_kernel_type  = para_code_input['data_handling']['smooth_by_hand'][2]
+    smoo_boundary_kernel       = para_code_input['data_handling']['smooth_by_hand'][3]
+    splititin                  = para_code_input['data_handling']['smooth_by_hand'][4]
+    
 
     # smoothing process of the masking function
     #
@@ -349,7 +359,8 @@ def main():
                     std_freq_sigma            = 9
                     std_over_time_per_freq    = np.std(RFI_std_mean_mask_data_1,axis=0)
 
-                    chan_mask                 = RFIL.boundary_mask_data(std_over_time_per_freq.compressed(),std_over_time_per_freq,sigma=std_freq_sigma,stats_type=flag_RFI_std_mean_stats_type,do_info=False).astype(int)
+                    chan_mask                 = RFIL.boundary_mask_data(std_over_time_per_freq.compressed(),std_over_time_per_freq,\
+                                                                            sigma=std_freq_sigma,stats_type=flag_RFI_std_mean_stats_type,do_info=False).astype(int)
 
                     fg_chan = 0
                     for i in range(len(chan_mask)):
@@ -376,7 +387,8 @@ def main():
 
                     # flag channels on std outlieres after subtracting the linear fit 
                     #
-                    lf_mask             = RFIL.boundary_mask_data(RFI_std_cor.compressed(),RFI_std_cor,sigma=flag_RFI_std_mean_sigma,stats_type=flag_RFI_std_mean_stats_type,do_info=False).astype(int)
+                    lf_mask             = RFIL.boundary_mask_data(RFI_std_cor.compressed(),RFI_std_cor,sigma=flag_RFI_std_mean_sigma,\
+                                                                      stats_type=flag_RFI_std_mean_stats_type,do_info=False).astype(int)
                     #
                     rfi_std_mean_fg_chan = 0
                     for i in range(len(lf_mask)):
@@ -389,6 +401,96 @@ def main():
                             print('\t\t flagged: ',rfi_std_mean_fg_chan,'channels')
                     
 
+                                            
+                # ---------------------------------------------------------------------------------------------
+                # flagging based on single smoothed spectrum  
+                # ---------------------------------------------------------------------------------------------
+
+                if flag_smooth_sigma > 0:
+
+                    flag_smoo_stats_type = 'madmadmedian'
+                    
+                    from scipy.interpolate import interp1d
+                
+                    # get the single averaged spectrum
+                    smoo_data_mask_data = ma.masked_array(spectrum_data,mask=new_mask,fill_value=np.nan)
+                    #
+                    smoo_freq           = freq
+                    smoo_chan           = np.arange(len(freq))
+                    smoo_amp            = smoo_data_mask_data.mean(axis=0)[1:]
+
+                    # generate a linear interpolated dataset at the flagged channels
+                    #                    
+                    cl_smoo_freq      = smoo_freq[np.invert(smoo_amp.mask)]
+                    cl_smoo_chan      = smoo_chan[np.invert(smoo_amp.mask)]
+                    cl_smoo_amp       = smoo_amp.data[np.invert(smoo_amp.mask)]
+                    #
+                    intepol_func      = interp1d(cl_smoo_freq,cl_smoo_amp,fill_value='extrapolate')
+                    smoo_amp_interpol = intepol_func(smoo_freq)
+
+                    # smooth the data and subtract from the original
+                    #
+                    #smoo_kernel_type = 'hamming'
+                    #smoo_kernel      = 31
+                    #
+                    smoo_amp_interpol_bslcorr   = smoo_amp_interpol - RFIL.convolve_1d_data(smoo_amp_interpol,smooth_type=smoo_kernel_type,smooth_kernel=smoo_kernel)
+
+                    
+                    # Split the residual in spwd to obtain an envelope of the data distribution
+                    # CAUTION splitting only works if you splitt the spectrum 
+                    # into an integer number
+                    #
+                    #splititin                 = 12
+                    #smoo_boundary_kernel_type = 'median'
+                    #smoo_boundary_kernel      = int(2**(splititin/2.) + 1)
+                    #
+                    spwd_data                 = np.array_split(smoo_amp_interpol_bslcorr,2**splititin)
+                    spwd_data_freq            = np.array_split(smoo_freq,2**splititin)
+                    up_bound                  = flag_smooth_sigma * np.std(spwd_data,axis=1)
+                    #
+
+                    # Smooth the boundary
+                    # 
+                    smo_boundary            = RFIL.convolve_1d_data(up_bound,smooth_type=smoo_boundary_kernel_type,smooth_kernel=smoo_boundary_kernel)
+                    #
+                    # need to interpolate full channel range
+                    #
+                    intepol_bound_func      = interp1d(np.mean(spwd_data_freq,axis=1),smo_boundary,fill_value='extrapolate')
+                    bound_up_interpoled     = intepol_bound_func(smoo_freq)
+                    bound_low_interpoled    = -1 * bound_up_interpoled
+                    #
+                    select_up               = smoo_amp_interpol_bslcorr > bound_up_interpoled
+                    select_low              = smoo_amp_interpol_bslcorr < bound_low_interpoled
+                    #
+                    smoo_select_unclead     = np.logical_or(select_up,select_low).astype(int)
+                    smoo_select             = RFIL.clean_up_1d_mask(smoo_select_unclead,clean_bins,setvalue=1)
+
+                    # Just for debugging in the future if something odd is happening
+                    #
+                    dotestplot = False
+                    if dotestplot:
+                        from matplotlib import pylab as plt
+                        plt.plot(smoo_freq,bound_up_interpoled,color='red')
+                        plt.plot(smoo_freq,bound_low_interpoled,color='red')
+                        plt.scatter(smoo_freq,smoo_amp_interpol_bslcorr)
+                        plt.show()
+                    
+                    # here do the flagging
+                    #
+                    smoo_fg_chan = 0
+                    for i in range(len(smoo_select)):
+                            if smoo_select[i] == 1:
+                                new_mask[:,i] = True
+                                smoo_fg_chan += 1
+
+                    if toutput:
+                        print('\t- FG channels on smooth spectrum')
+                        print('\t\t kernel: ',smoo_kernel_type,' size ',smoo_kernel)
+                        print('\t\t boundary averaging: ',smoo_boundary_kernel_type,' SWPD ',len(spwd_data_freq))
+                        print('\t\t\t boundary smoothing kernel: ',smoo_boundary_kernel_type,' size ',smoo_boundary_kernel)
+                        print('\t\t flagged: ',smoo_fg_chan,'channels ')
+
+                                
                 # ---------------------------------------------------------------------------------------------
                 # flagging based on single spectrum baseline fit 
                 # ---------------------------------------------------------------------------------------------
@@ -486,6 +588,7 @@ def main():
                 # ---------------------------------------------------------------------------------------------
                 # flag individual each spectrum by applying denoising with a lot of smoothing
                 # ---------------------------------------------------------------------------------------------
+
                 if donotflag:
 
                     if RFIL.str_in_strlist(d,flag_on):
@@ -568,9 +671,10 @@ def main():
                                 new_mask[s][1:]    = final_sp_mask
 
                                 if toutput:
-                                    # do some time measures
-                                    elapsed_time = process_time() - fg_t
-                                    print(s,' time uses ',elapsed_time,' ',d.replace('timestamp',''))
+                                    if s%10 == 0:
+                                        # do some time measures
+                                        elapsed_time = process_time() - fg_t
+                                        print(int(100*s/spectrum_data.shape[0]),'% done, ',' time used ',elapsed_time,' ',d.replace('timestamp',''))
 
 
                 full_new_mask[d.replace('timestamp','')]      = new_mask
@@ -1001,6 +1105,9 @@ def new_argument_parser():
     parser.add_option('--DO_RFI_STD_MEAN_SIGMA', dest='flag_RFI_std_mean_sigma', type=float, default=0,
                       help='determine flags based on the linear relation of noise and power. [default = 0 is off use e.g. = 3]')
 
+    parser.add_option('--DO_SMOOTH_SIGMA', dest='flag_smooth_sigma', type=float, default=0,
+                      help='determine flags based on smooth spectrum, see RFI_SETTINGS.json. [default = 0 is off use e.g. = 3]')
+    
     parser.add_option('--DO_BSLF_SIGMA', dest='flag_bslf_sigma', type=float, default=0,
                       help='determine flags based on spectral baseline fit. [default = 0 is off use e.g. = 10]')
 

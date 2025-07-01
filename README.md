@@ -47,6 +47,9 @@ Options:
   --DO_RFI_STD_MEAN_SIGMA=FLAG_RFI_STD_MEAN_SIGMA
                         determine flags based on the linear relation of noise
                         and power. [default = 0 is off use e.g. = 3]
+  --DO_SMOOTH_SIGMA=FLAG_SMOOTH_SIGMA
+                        determine flags based on smooth spectrum, see
+                        RFI_SETTINGS.json. [default = 0 is off use e.g. = 3]
   --DO_BSLF_SIGMA=FLAG_BSLF_SIGMA
                         determine flags based on spectral baseline fit.
                         [default = 0 is off use e.g. = 10]
@@ -78,6 +81,7 @@ Options:
   --DO_RFI_REPORT_SIGMA=DO_RFI_REPORT_SIGMA
                         set the y-range of the SPWDs plots of the RFI report
                         [default = 5]
+  --OBSINFO             Show observation info stored in the file
   --HELP                Show info on input
   
 ```

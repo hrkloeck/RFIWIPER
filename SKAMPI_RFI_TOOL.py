@@ -19,7 +19,7 @@ import multiprocessing
 import sys
 from optparse import OptionParser
 #
-from MPG_HDF5_libs import *
+import MPG_HDF5_libs as MPGHD 
 #
 from astropy.time import Time
 from astropy import units as u
@@ -97,7 +97,7 @@ def main():
     do_rfi_report_sigma       = opts.do_rfi_report_sigma
     scan_velo_fg_sigma        = opts.scan_velo_fg_sigma
     rad_dec_scan              = opts.rad_dec_scan
-        
+    getobsinfo                = opts.getobsinfo
 
     # define what to plot
     #
@@ -128,21 +128,108 @@ def main():
 
     # get the data keys of the timestamping in the scans and spectra
     #
-    timestamp_keys       = findkeys(obsfile,keys=['scan','timestamp'],exactmatch=True)
+    timestamp_keys       = MPGHD.findkeys(obsfile,keys=['scan','timestamp'],exactmatch=True)
     #
-    spectrum_keys        = findkeys(obsfile,keys=['scan','spectrum'],exactmatch=True)
-    #    
+    spectrum_keys        = MPGHD.findkeys(obsfile,keys=['scan','spectrum'],exactmatch=True)
+    #
     if len(use_scan) == 0:
-        scan_keys = []
-        for k in timestamp_keys:
-            scan_keys.append(k.split('/')[1])
-        scan_keys  = np.unique(scan_keys)
+        scan_keys  = MPGHD.get_obs_info(timestamp_keys,info_idx=1)
     else:
         scan_keys  = np.unique(use_scan)
     #
     # #########  
 
+
+
+    if getobsinfo:
+
         
+        info_dics = {}
+
+        # get info from attributes of the file
+        for a in obsfile.attrs:
+            info_dics[a] = obsfile.attrs[a]
+
+        # enlarge info
+        info_dics['SCAN'] = list(MPGHD.get_obs_info(timestamp_keys,info_idx=1))
+        info_dics['TYPE'] = list(MPGHD.get_obs_info(timestamp_keys,info_idx=2))
+
+        obs_pos = [info_dics['telescope_longitude'],info_dics['telescope_latitude'],info_dics['telescope_height']]
+
+
+        print('\n======== DATA INFORMATION =========================\n')
+
+        print('\t - Data file ', data_file)
+
+        print('\n\t - General Information ')
+
+        for i in info_dics:
+            print('\t\t ',i,info_dics[i])
+
+            
+        for d in timestamp_keys:
+
+
+            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
+                
+                info_data = d.split('/')
+
+                time_data         = obsfile[d][:]
+                freq              = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
+                #
+                acu_times         = Time(obsfile[d][:],scale='utc',format='unix').iso
+                #
+                sc_data_az        = obsfile[d.replace('timestamp','azimuth')][:]
+                sc_data_el        = obsfile[d.replace('timestamp','elevation')][:]
+                sc_data_ra        = obsfile[d.replace('timestamp','ra')][:]
+                sc_data_dec       = obsfile[d.replace('timestamp','dec')][:]
+                
+                gain              = obsfile[d.replace('timestamp','power')][:]/obsfile[d.replace('timestamp','power').replace(info_data[2],info_data[2].replace('ND0','ND1'))][:]
+
+                stats_gain        = RFIL.data_stats(gain,stats_type='mean',accur=100)
+                
+                mask_data         = obsfile[d.replace('timestamp','')+'mask']
+                masked_percentage = np.count_nonzero(mask_data)/np.cumprod(mask_data.shape)[-1]*100
+
+                
+                # determine velocities
+                velo_dec = np.gradient(sc_data_dec)/np.gradient(time_data.flatten()) 
+                velo_ra  = np.gradient(sc_data_ra)/np.gradient(time_data.flatten())
+                velo_az  = np.gradient(sc_data_az)/np.gradient(time_data.flatten())
+                velo_el  = np.gradient(sc_data_el)/np.gradient(time_data.flatten()) 
+                #
+                vstatstyp = 'madmedian'
+                stats_ra  = RFIL.data_stats(velo_ra,stats_type=vstatstyp,accur=100)
+                stats_dec = RFIL.data_stats(velo_dec,stats_type=vstatstyp,accur=100)
+                stats_az  = RFIL.data_stats(velo_az,stats_type=vstatstyp,accur=100)
+                stats_el  = RFIL.data_stats(velo_el,stats_type=vstatstyp,accur=100)
+
+
+                print('\n\t - Scan Info')
+                print('\t\tscan ',info_data[1],'type ',info_data[2])
+
+                print('\t\t\t - time range:                 ', min(acu_times)[0],max(acu_times)[0])
+                print('\t\t\t - total time:                 ', max(time_data)[0]- min(time_data)[0],' [s]')
+                print('\t\t\t - percentage masked:          ', masked_percentage, '[%]')
+                print('\t\t\t - gain un-masked:             ', *stats_gain[:2], '[mean, std]')
+                
+                print('\t\t\t - Azimuth [min, max, velo]:   ',min(sc_data_az),max(sc_data_az),stats_az[0], '[deg, deg, deg/s]')
+                print('\t\t\t - Elevation [min, max, velo]: ',min(sc_data_el),max(sc_data_el),stats_el[0], '[deg, deg, deg/s]')
+                print('\t\t\t - RA [min, max, velo]:        ',min(sc_data_ra),max(sc_data_ra),stats_ra[0], '[deg, deg, deg/s]')
+                print('\t\t\t - DEC [min, max, velo]:       ',min(sc_data_dec),max(sc_data_dec),stats_dec[0], '[deg, deg, deg/s]')
+
+                planets = ['sun    ','moon   ','jupiter']
+                for p in planets:
+                    planet_separation = MPGHD.source_plant_separation(sc_data_ra,sc_data_dec,p.replace(' ',''),time_data,obs_pos).flatten()
+                    lowest_FOV        = MPGHD.fov_fwhm(freq[0],15,type='fov',outunit='deg')
+                    print('\t\t\t - distance to ',p,'       ',min(planet_separation),', FoV ',lowest_FOV,'[deg]')
+            
+
+                    
+        print('\n\n')
+                    
+        sys.exit(-1)
+    
     # ---------------------------------------------------------------------------------------------
     # Define how many cpu are used 
     # ---------------------------------------------------------------------------------------------
@@ -1158,6 +1245,9 @@ def new_argument_parser():
 
     parser.add_option('--DO_RFI_REPORT_SIGMA', dest='do_rfi_report_sigma', type=float, default=5,
                       help='set the y-range of the SPWDs plots of the RFI report [default = 5]')
+
+    parser.add_option('--OBSINFO', dest='getobsinfo', action='store_true',
+                      default=False,help='Show observation info stored in the file')
 
     parser.add_option('--HELP', dest='help', action='store_true',
                       default=False,help='Show info on input')

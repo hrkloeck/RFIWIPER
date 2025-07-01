@@ -817,3 +817,34 @@ def filenamecounter(fname,extention='.png'):
 
     return filename
     
+def get_obs_info(timestamp_keys,info_idx=0):
+    """
+    
+    """
+
+    obs_informa = []
+    for k in timestamp_keys:
+        obs_informa.append(k.split('/')[info_idx])
+        
+    obs_info  = np.unique(obs_informa)
+
+    return obs_info
+
+
+def source_plant_separation(source_ra,source_dec,planet,time,obs_pos):
+    """
+        
+    """
+    from astropy.coordinates import get_body,EarthLocation,SkyCoord
+    from astropy.time import Time
+    import astropy.units as u
+
+
+    array_central_pos = EarthLocation(obs_pos[0]*u.deg,obs_pos[1]*u.deg,obs_pos[2]*u.m)
+    timestamp         = Time(time,scale='utc',format='unix')
+    planet_pos        = get_body(planet,timestamp,location=array_central_pos, ephemeris=None)
+    planet_sky_pos    = SkyCoord(ra=planet_pos.ra,dec=planet_pos.dec,frame='gcrs',location=array_central_pos,obstime=timestamp)
+    so_coord          = SkyCoord(source_ra,source_dec, unit='deg',frame='icrs')
+    separation        = so_coord.separation(planet_sky_pos).deg
+
+    return separation

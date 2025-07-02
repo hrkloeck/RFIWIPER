@@ -21,6 +21,7 @@ from optparse import OptionParser
 #
 import MPG_HDF5_libs as MPGHD 
 #
+from astropy.coordinates import SkyCoord
 from astropy.time import Time
 from astropy import units as u
 #
@@ -183,7 +184,10 @@ def main():
                 sc_data_el        = obsfile[d.replace('timestamp','elevation')][:]
                 sc_data_ra        = obsfile[d.replace('timestamp','ra')][:]
                 sc_data_dec       = obsfile[d.replace('timestamp','dec')][:]
-                
+                #
+                c_min             = SkyCoord(ra=min(sc_data_ra)*u.degree, dec=min(sc_data_dec)*u.degree)
+                c_max             = SkyCoord(ra=max(sc_data_ra)*u.degree, dec=max(sc_data_dec)*u.degree)
+                #
                 gain              = obsfile[d.replace('timestamp','power')][:]/obsfile[d.replace('timestamp','power').replace(info_data[2],info_data[2].replace('ND0','ND1'))][:]
 
                 stats_gain        = RFIL.data_stats(gain,stats_type='mean',accur=100)
@@ -217,7 +221,9 @@ def main():
                 print('\t\t\t - Elevation [min, max, velo]: ',min(sc_data_el),max(sc_data_el),stats_el[0], '[deg, deg, deg/s]')
                 print('\t\t\t - RA [min, max, velo]:        ',min(sc_data_ra),max(sc_data_ra),stats_ra[0], '[deg, deg, deg/s]')
                 print('\t\t\t - DEC [min, max, velo]:       ',min(sc_data_dec),max(sc_data_dec),stats_dec[0], '[deg, deg, deg/s]')
+                print('\t\t\t - RA, DEC [min | max]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))
 
+                
                 planets = ['sun    ','moon   ','jupiter']
                 for p in planets:
                     planet_separation = MPGHD.source_plant_separation(sc_data_ra,sc_data_dec,p.replace(' ',''),time_data,obs_pos).flatten()

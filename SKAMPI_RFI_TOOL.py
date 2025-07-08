@@ -100,14 +100,6 @@ def main():
     rad_dec_scan              = opts.rad_dec_scan
     getobsinfo                = opts.getobsinfo
 
-    # define what to plot
-    #
-    use_data_fg               = RFIL.cleanup_strg_input(use_data)
-    use_noise_data            = RFIL.cleanup_strg_input(use_noise_data)
-    use_scan                  = RFIL.cleanup_strg_input(use_scan)
-
-    plot_type                 = use_noise_data
-    dofgbyhand                = eval(dofgbyhand)
 
 
     if toutput:
@@ -133,10 +125,30 @@ def main():
     #
     spectrum_keys        = MPGHD.findkeys(obsfile,keys=['scan','spectrum'],exactmatch=True)
     #
+
     if len(use_scan) == 0:
         scan_keys  = MPGHD.get_obs_info(timestamp_keys,info_idx=1)
     else:
-        scan_keys  = np.unique(use_scan)
+        scan_keys  = np.unique(eval(use_scan))
+
+    if len(use_data) == 0:
+        data_keys = MPGHD.get_obs_info(MPGHD.get_obs_info(spectrum_keys,info_idx=2),info_idx=0,splittype='_')
+    else:
+        data_keys = np.unique(eval(use_data))
+
+    if len(use_noise_data) == 0:
+        noise_keys = MPGHD.get_obs_info(MPGHD.get_obs_info(spectrum_keys,info_idx=2),info_idx=1,splittype='_')
+    else:
+        noise_keys = np.unique(eval(use_noise_data))
+
+    # define what to flag and to plot
+    #
+    use_data_fg               = data_keys #RFIL.cleanup_strg_input(use_data)
+    use_noise_data            = noise_keys #RFIL.cleanup_strg_input(use_noise_data)
+    use_scan                  = scan_keys #RFIL.cleanup_strg_input(use_scan)
+    #
+    plot_type                 = use_noise_data
+    dofgbyhand                = eval(dofgbyhand)    
     #
     # #########  
 
@@ -152,8 +164,14 @@ def main():
             info_dics[a] = obsfile.attrs[a]
 
         # enlarge info
-        info_dics['SCAN'] = list(MPGHD.get_obs_info(timestamp_keys,info_idx=1))
-        info_dics['TYPE'] = list(MPGHD.get_obs_info(timestamp_keys,info_idx=2))
+
+        scan_keys   = MPGHD.get_obs_info(timestamp_keys,info_idx=1)
+        data_keys   = MPGHD.get_obs_info(MPGHD.get_obs_info(spectrum_keys,info_idx=2),info_idx=0,splittype='_')
+        noise_keys  = MPGHD.get_obs_info(MPGHD.get_obs_info(spectrum_keys,info_idx=2),info_idx=1,splittype='_')
+
+        info_dics['SCAN']  = list(scan_keys)
+        info_dics['TYPE']  = list(data_keys)
+        info_dics['NOISE'] = list(noise_keys)
 
         obs_pos = [info_dics['telescope_longitude'],info_dics['telescope_latitude'],info_dics['telescope_height']]
 
@@ -293,7 +311,7 @@ def main():
     # Set some input settings 
     #
     bound_sigma          = [bound_sigma_input,bound_sigma_input]   # if edges of the spectrum to much eaten away increase # old setting: bound_sigma          = [3,3]
-    flag_on              = eval(use_data)                          # only use noise diode off to generate flags ['ND0','ND1'] would do all
+    flag_on              = use_data                                # only use noise diode off to generate flags ['ND0','ND1'] would do all
 
     #
     # --------------------------------------------
@@ -1165,13 +1183,13 @@ def new_argument_parser():
     parser.add_option('--DATA_FILE', dest='datafile', type=str,
                       help='DATA - HDF5 file of the Prototyp')
 
-    parser.add_option('--USEDATA', dest='usedata', type=str,default="['P0','P1']",
-                      help='use data to flag default is "[\'P0\',\'P1\']", for Stokes use e.g. \"[\'S0\']\"')
+    parser.add_option('--USEDATA', dest='usedata', type=str,default='',
+                      help='data to flag, default use all or select e.g. \"[\'P0\',\'P1\']\" or \"[\'S0\']\"')
 
-    parser.add_option('--USENOISEDATA', dest='usenoisedata', type=str,default="['ND0']",
+    parser.add_option('--USENOISEDATA', dest='usenoisedata', type=str,default="[\'ND0\']",
                       help='use data noise diode on and off "[\'ND0\',\'ND1\']", default is \"[\'ND0\']\"')
 
-    parser.add_option('--USESCAN', dest='usescan', type=str,default="[]",
+    parser.add_option('--USESCAN', dest='usescan', type=str,default='',
                       help='select scan to flag, default are all scans, to choose scan 000 and 001 use e.g. \"[\'000\',\'001\']\"')
     
     parser.add_option('--DONOTHEAVYFLAG', dest='donotflag', action='store_false',

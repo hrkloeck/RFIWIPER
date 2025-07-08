@@ -817,14 +817,14 @@ def filenamecounter(fname,extention='.png'):
 
     return filename
     
-def get_obs_info(timestamp_keys,info_idx=0):
+def get_obs_info(timestamp_keys,info_idx=0,splittype='/'):
     """
     
     """
 
     obs_informa = []
     for k in timestamp_keys:
-        obs_informa.append(k.split('/')[info_idx])
+        obs_informa.append(k.split(splittype)[info_idx])
         
     obs_info  = np.unique(obs_informa)
 

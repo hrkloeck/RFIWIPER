@@ -2,11 +2,15 @@
     "data_handling":{
 	"splitting": [0,6000,-1],
 	"usedbinning": [100,61],
-	"stats_type": ["madmean","madmean"],
+	"stats_type": ["madmean","madmean"]
+	},
+    "smoothing":{
 	"smooth_bound_kernel": [31,31],
 	"smooth_type": ["wiener","wiener"],
-	"smooth_by_hand": ["hamming",31,"median",63,12,4096]
-	},
+	"smooth_by_hand": ["hamming",31,"median",63,12,4096],
+	"clean_bins_freq": [[1,0,1],[1,0,0,1],[1,0,0,0,1],[1,0,0,0,0,1],[1,0,0,0,0,0,1],[1,0,0,0,1,0,0,0,1]],
+	"clean_bins_time": [[1,0,1],[1,0,0,1],[1,0,0,0,1],[1,0,0,0,0,1],[1,0,0,0,0,0,1],[1,0,0,0,1,0,0,0,1],[1, 0, 0, 0, 0, 0, 0, 1],[1, 0, 0, 0, 0, 0, 0, 0, 1],[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]]
+        },
     "flagprocessing":{
 	"SEMIFAST":{
 	    "kernel_sizes": [7,30],

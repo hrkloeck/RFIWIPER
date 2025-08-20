@@ -627,6 +627,7 @@ def cleanup_strg_input(inputstrg):
     """
     return inputstrg.replace('[','').replace(']','').replace("'",'').split(',')
 
+
 def get_json(filename,homedir=''):
     """
     get json info

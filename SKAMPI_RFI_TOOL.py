@@ -2,7 +2,7 @@
 #
 # Hans-Rainer Kloeckner
 #
-# MPIfR 2026
+# MPIfR 2025
 #
 # History:
 # based on CHECK_SURVEY_SCANS.py
@@ -72,7 +72,7 @@ def main():
     use_data                  = opts.usedata
     use_noise_data            = opts.usenoisedata
     use_scan                  = opts.usescan
-    donotflag                 = opts.donotflag
+    donothavyflag             = opts.donothavyflag
     flagprocessing            = opts.flagprocessing
     dofgbyhand                = opts.hand_time_fg
     time_sigma                = opts.auto_time_fg_sigma
@@ -81,6 +81,7 @@ def main():
     flag_RFI_std_mean_sigma   = opts.flag_RFI_std_mean_sigma
     flag_smooth_sigma         = opts.flag_smooth_sigma
     flag_bslf_sigma           = opts.flag_bslf_sigma
+    docleanup_mask            = opts.docleanup_mask
     doplot_final_spec         = opts.doplot_final_spec
     doplot_final_full_data    = opts.doplot_final_full_data
     doplot_with_invert_mask   = opts.invert_mask
@@ -207,8 +208,10 @@ def main():
                 c_max             = SkyCoord(ra=max(sc_data_ra)*u.degree, dec=max(sc_data_dec)*u.degree)
                 #
                 gain              = obsfile[d.replace('timestamp','power')][:]/obsfile[d.replace('timestamp','power').replace(info_data[2],info_data[2].replace('ND0','ND1'))][:]
-
                 stats_gain        = RFIL.data_stats(gain,stats_type='mean',accur=100)
+                #
+                satur             = obsfile[d.replace('timestamp','saturated_samples')][:].flatten()
+                stats_satur       = RFIL.data_stats(satur,stats_type='mean',accur=100)
                 
                 mask_data         = obsfile[d.replace('timestamp','')+'mask']
                 masked_percentage = np.count_nonzero(mask_data)/np.cumprod(mask_data.shape)[-1]*100
@@ -218,7 +221,8 @@ def main():
                 velo_dec = np.gradient(sc_data_dec)/np.gradient(time_data.flatten()) 
                 velo_ra  = np.gradient(sc_data_ra)/np.gradient(time_data.flatten())
                 velo_az  = np.gradient(sc_data_az)/np.gradient(time_data.flatten())
-                velo_el  = np.gradient(sc_data_el)/np.gradient(time_data.flatten()) 
+                velo_el  = np.gradient(sc_data_el)/np.gradient(time_data.flatten())
+                
                 #
                 vstatstyp = 'madmedian'
                 stats_ra  = RFIL.data_stats(velo_ra,stats_type=vstatstyp,accur=100)
@@ -226,7 +230,7 @@ def main():
                 stats_az  = RFIL.data_stats(velo_az,stats_type=vstatstyp,accur=100)
                 stats_el  = RFIL.data_stats(velo_el,stats_type=vstatstyp,accur=100)
 
-
+                
                 print('\n\t - Scan Info')
                 print('\t\tscan ',info_data[1],'type ',info_data[2])
 
@@ -234,12 +238,12 @@ def main():
                 print('\t\t\t - total time:                 ', max(time_data)[0]- min(time_data)[0],' [s]')
                 print('\t\t\t - percentage masked:          ', masked_percentage, '[%]')
                 print('\t\t\t - gain un-masked:             ', *stats_gain[:2], '[mean, std]')
-                
-                print('\t\t\t - Azimuth [min, max, velo]:   ',min(sc_data_az),max(sc_data_az),stats_az[0], '[deg, deg, deg/s]')
-                print('\t\t\t - Elevation [min, max, velo]: ',min(sc_data_el),max(sc_data_el),stats_el[0], '[deg, deg, deg/s]')
-                print('\t\t\t - RA [min, max, velo]:        ',min(sc_data_ra),max(sc_data_ra),stats_ra[0], '[deg, deg, deg/s]')
-                print('\t\t\t - DEC [min, max, velo]:       ',min(sc_data_dec),max(sc_data_dec),stats_dec[0], '[deg, deg, deg/s]')
-                print('\t\t\t - RA, DEC [min | max]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))
+                print('\t\t\t - saturation un-masked:       ', *stats_satur[:2], '[units]')
+                print('\t\t\t - Azimuth [min, max, velo]:   ',min(sc_data_az),max(sc_data_az),stats_az[0], stats_az[1], '[deg, deg, deg/s, Delta deg/s]')
+                print('\t\t\t - Elevation [min, max, velo]: ',min(sc_data_el),max(sc_data_el),stats_el[0], stats_el[1], '[deg, deg, deg/s, Delta deg/s]')
+                print('\t\t\t - RA [min, max, velo]:        ',min(sc_data_ra),max(sc_data_ra),stats_ra[0], stats_ra[1], '[deg, deg, deg/s, Delta deg/s]')
+                print('\t\t\t - DEC [min, max, velo]:       ',min(sc_data_dec),max(sc_data_dec),stats_dec[0], stats_dec[1], '[deg, deg, deg/s, Delta deg/s]')
+                print('\t\t\t - RA, DEC [min | max]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))                
 
                 
                 planets = ['sun    ','moon   ','jupiter']
@@ -281,33 +285,32 @@ def main():
     splitting            = para_code_input['data_handling']['splitting']
     usedbinning          = para_code_input['data_handling']['usedbinning']
     stats_type           = para_code_input['data_handling']['stats_type']
-    smooth_bound_kernel  = para_code_input['data_handling']['smooth_bound_kernel']
+    smooth_bound_kernel  = para_code_input['smoothing']['smooth_bound_kernel']
 
     # there is a handflag option with the follwong parameter
     # that does a single step of the heavyflag
-    smoo_kernel_type           = para_code_input['data_handling']['smooth_by_hand'][0]
-    smoo_kernel                = para_code_input['data_handling']['smooth_by_hand'][1]
-    smoo_boundary_kernel_type  = para_code_input['data_handling']['smooth_by_hand'][2]
-    smoo_boundary_kernel       = para_code_input['data_handling']['smooth_by_hand'][3]
-    splititin                  = para_code_input['data_handling']['smooth_by_hand'][4]
+    smoo_kernel_type           = para_code_input['smoothing']['smooth_by_hand'][0]
+    smoo_kernel                = para_code_input['smoothing']['smooth_by_hand'][1]
+    smoo_boundary_kernel_type  = para_code_input['smoothing']['smooth_by_hand'][2]
+    smoo_boundary_kernel       = para_code_input['smoothing']['smooth_by_hand'][3]
+    splititin                  = para_code_input['smoothing']['smooth_by_hand'][4]
     
 
     # smoothing process of the masking function
     #
-    smooth_type           = para_code_input['data_handling']['smooth_type']
+    smooth_type           = para_code_input['smoothing']['smooth_type']
     #
     kernel_sizes          = para_code_input['flagprocessing'][flagprocessing]['kernel_sizes']
     kernel_sequence_type  = para_code_input['flagprocessing'][flagprocessing]['kernel_sequence_type']
 
     # clean up mask of some pattern 
+    # can define this in the settings file
     #
-    clean_bins = [[1,0,1],\
-                      [1,0,0,1],\
-                      [1,0,0,0,1],\
-                      [1,0,0,0,0,1],\
-                      [1,0,0,0,0,0,1],\
-                      [1,0,0,0,1,0,0,0,1]]
+    clean_bins_freq = para_code_input['smoothing']['clean_bins_freq']
+    clean_bins_time = para_code_input['smoothing']['clean_bins_time']
+    
 
+    
     # Set some input settings 
     #
     bound_sigma          = [bound_sigma_input,bound_sigma_input]   # if edges of the spectrum to much eaten away increase # old setting: bound_sigma          = [3,3]
@@ -410,7 +413,7 @@ def main():
 
                     satur = obsfile[d.replace('timestamp','saturated_samples')][:]
                     satur = satur.flatten()
-
+                    
                     time_mask_sat = RFIL.boundary_mask_data(satur,satur,sigma=saturation_fg_sigma,stats_type='madmedian',do_info=False).astype(int)
 
                     fg_sat = 0 
@@ -574,7 +577,7 @@ def main():
                     select_low              = smoo_amp_interpol_bslcorr < bound_low_interpoled
                     #
                     smoo_select_unclead     = np.logical_or(select_up,select_low).astype(int)
-                    smoo_select             = RFIL.clean_up_1d_mask(smoo_select_unclead,clean_bins,setvalue=1)
+                    smoo_select             = RFIL.clean_up_1d_mask(smoo_select_unclead,clean_bins_freq,setvalue=1)
 
                     # Just for debugging in the future if something odd is happening
                     #
@@ -696,11 +699,66 @@ def main():
                         print('\t- FG channels on baseline fit ',interpol_data_info[std_mean_ratio_min])
                         print('\t\t flagged: ',bslf_fg_chan,'channels above ',freq[set_lower_limit_to_fg]/1E9,' [GHz]')
 
+
                 # ---------------------------------------------------------------------------------------------
-                # flag individual each spectrum by applying denoising with a lot of smoothing
+                # flagging based on cleaning up 1d spectra and timelines 
                 # ---------------------------------------------------------------------------------------------
 
-                if donotflag:
+                if docleanup_mask:
+                    
+                    # Clean up in time
+                    #
+                    mask_in_time         = np.prod(new_mask.astype(int),axis=1)
+                    clean_in_time_select = RFIL.clean_up_1d_mask(mask_in_time,clean_bins_time,setvalue=1)
+                    
+                    # here do the flagging
+                    #
+                    clean_in_times = 0
+                    for i in range(len(clean_in_time_select)):
+                            if clean_in_time_select[i] == 1:
+                                new_mask[i,:] = True
+                                clean_in_times += 1
+
+                                
+                    # Clean up in frequency
+                    #
+                    mask_in_freq         = np.prod(new_mask.astype(int),axis=0)
+                    clean_in_freq_select = RFIL.clean_up_1d_mask(mask_in_freq,clean_bins_freq,setvalue=1)
+
+                    # here do the flagging
+                    #
+                    clean_in_freq = 0
+                    for i in range(len(clean_in_freq_select)):
+                            if clean_in_freq_select[i] == 1:
+                                new_mask[:,i] = True
+                                clean_in_freq += 1
+
+                                
+                    if toutput:
+                            print('\t- Clean up final 2 d mask')
+                            for p in range(len(clean_bins_time)):
+                                    print('\t\t with clean_pattern',clean_bins_time[p])
+                            print('\t\t flagged: ',clean_in_times,'times')
+                            for p in range(len(clean_bins_freq)):
+                                    print('\t\t with clean_pattern',clean_bins_freq[p])
+                            print('\t\t flagged: ',clean_in_freq,'frequencies')
+                    
+                    #from matplotlib import pylab as plt
+
+                    #plt.scatter(np.arange(len(mask_in_time)),mask_in_time)
+                    #plt.show()
+
+                    #plt.scatter(np.arange(len(mask_in_freq)),mask_in_freq)
+                    #plt.show()
+
+                    #sys.exit(-1)
+                    
+                # ---------------------------------------------------------------------------------------------
+                # flag individual each spectrum by applying smoothing kernels with increasing width sort of
+                # denoising with a lot of smoothing filters
+                # ---------------------------------------------------------------------------------------------
+
+                if donothavyflag:
 
                     if RFIL.str_in_strlist(d,flag_on):
 
@@ -737,7 +795,7 @@ def main():
 
                                             # Here do the multiprocessing
                                             jo = multiprocessing.Process(target=RFIL.flag_spec_by_smoothing, args=(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
-                                                                                     smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins,idx,mmque[idxq],idxq))
+                                                                                     smooth_type,usedbinning,bound_sigma,stats_type,smooth_bound_kernel,clean_bins_freq,idx,mmque[idxq],idxq))
                                             jobs.append(jo)
                                             jo.start()
                                             idxq += 1
@@ -778,7 +836,7 @@ def main():
 
                                 final_sp_mask      = RFIL.flag_spec_by_smoothing(fg_spec,freq,cleanup_spec_mask,splitting,kernel_sizes,kernel_sequence_type,\
                                                                                      smooth_type,usedbinning,bound_sigma,stats_type,\
-                                                                                     smooth_bound_kernel,clean_bins)
+                                                                                     smooth_bound_kernel,clean_bins_freq)
                                 new_mask[s][1:]    = final_sp_mask
 
                                 if toutput:
@@ -1192,14 +1250,14 @@ def new_argument_parser():
     parser.add_option('--USESCAN', dest='usescan', type=str,default='',
                       help='select scan to flag, default are all scans, to choose scan 000 and 001 use e.g. \"[\'000\',\'001\']\"')
     
-    parser.add_option('--DONOTHEAVYFLAG', dest='donotflag', action='store_false',
+    parser.add_option('--DONOTHEAVYFLAG', dest='donothavyflag', action='store_false',
                       default=True,help='Do not use the time heavy flag procedure.')
    
     parser.add_option('--PROCESSING_TYPE', dest='flagprocessing', type=str,default='SEMIFAST',
                       help='setting how accurate/much time the flagging proceed. FAST, SEMIFAST, SLOW, default is SEMIFAST')
 
     parser.add_option('--DO_FG_TIME_BY_HAND', dest='hand_time_fg', type=str,default='[]',
-                      help='use the time index of the waterfall plot e.g. [[0,10],[100,110]]')
+                      help='use the time index of the waterfall plot e.g. [BLC [freq,time],TRC [freq, time]] e.g [[0,10],[100,110]]')
 
     parser.add_option('--DO_FG_TIME_AUTO_SIGMA', dest='auto_time_fg_sigma', type=float,default=0,
                       help='automatically determine bad time use threshold. default = 0 is off use e.g. = 5')
@@ -1221,6 +1279,9 @@ def new_argument_parser():
     
     parser.add_option('--DO_BSLF_SIGMA', dest='flag_bslf_sigma', type=float, default=0,
                       help='determine flags based on spectral baseline fit. [default = 0 is off use e.g. = 10]')
+
+    parser.add_option('--DONOT_CLEANUP_MASK', dest='docleanup_mask',action='store_false', default=True,
+                      help='Clean up the mask from specific pattern defined in the settings file. [default = False]')
 
     parser.add_option('--DO_AZEL_SCAN', dest='rad_dec_scan', action='store_false',
                       default=True,help='Switch to Azimuth-Elevation scan type to be used for velocity outliere flag.')

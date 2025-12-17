@@ -193,6 +193,7 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 ![]()<img src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_SPEC.png" width=25%>
 
 
+## Lets do some flagging 
 
 **Flagging by hand (--FG_BY_HAND=)**
 
@@ -300,7 +301,7 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 ```
 
 ![]()<img
-src="EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FGSMOOTH.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FGSMOOTH.png"
 width=25%>
 
 
@@ -308,7 +309,7 @@ width=25%>
 original and smoothed spectrum  (--FG_SMOOTH_THRESHOLDING_SIGMA=)**
 This works on the time averaged spectrum and decreasing number of
 kernel sizes. Similar the do_smooth_sigma, but the interpolation of
-the maked array an the kernels in fixed.
+the masked array an the kernels are fixed.
 
 ```
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_SMOOTH_THRESHOLDING_SIGMA=10 --PLOT_SPEC
@@ -345,7 +346,7 @@ may take a long time.
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_WT_SMOOTHING_SIGMA=6 --PROCESSING_TYPE=FAST --PLOT_WATERFALL
 ```
 
-Note this process took 158 secounds to complete the masking for the FAST processing
+Note this process took 158 seconds to complete the masking for the FAST processing
 type. In case you are using survey scans and the individual times differ quite a lot,
 you may want to invest the time.
 
@@ -366,7 +367,7 @@ RFI_SETTINGS.json file. See the smoothing filter wt settings.
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_WT_FILTERING_SIGMA=6 --PROCESSING_TYPE=FAST --PLOT_WATERFALL
 ```
 
-Note this process took 45 secounds to complete the masking.
+Note this process took 45 seconds to complete the masking.
 
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_WTFILTERING.png"
@@ -385,8 +386,42 @@ range and store the new mask in the data and repeat this process with
 definieng a different channel range.
 
 
+## Full flagging process on the dataset 
 
-**Some explanation to the settings file**
+As an example we applied some of the flagging processes. The software
+can not sequence the individual processes, instead it first process the
+flagging on the meta data (amp, scan velocity, saturation, noise),
+process the smoothing/filtering on the waterfall spectrum, and finally
+works on the time averaged spectrum. The flagging builds on top of
+each other, as such that the flagging process will update the mask,
+that will be used in the nest step. 
+
+```
+python SKAMPI_RFI_WIPER.py --DATA_FILE=../../../OBSERVATION_EXAMPLES/EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_VELO_SIGMA=5 --FG_NOISE_SIGMA=3 --FG_SMOOTH_SIGMA=6 --FG_BSLF_SIGMA=6 --FG_WT_FILTERING_SIGMA=6 --PROCESSING_TYPE=SLOW --PLOT_WATERFALL --PLOT_SPEC
+```
+
+Note to make the flagging applied to the dataset you need to set --EDIT_MASK
+
+The process took quite some time (819 s), since it used 250 filters to work on
+the data.
+
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FGALL.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_FGALL.png"
+width=25%>
+
+
+
+## Additional information
+
+1. [Information on SKAMPI data](https://github.com/hrkloeck/SKAMPI_DATA/tree/main)
+
+2. [Setup your working environment](https://github.com/hrkloeck/SKAMPI_DATA/tree/main/setup_environment)
+
+3. Some explanation to the settings file RFI_WIPER_SETTINGS.json
+
 
 This still needs to come in 2026!
 
@@ -399,3 +434,5 @@ changed to (hamming, gaussian, median, wiener, minimum) and with
 wt_kernels_size_limit 
 
 this is a powerfull tool setting.
+
+

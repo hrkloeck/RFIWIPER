@@ -1,0 +1,37 @@
+{
+    "stats_type_flagging":{
+	"stats_type_auto_time": "madmean",
+	"stats_type_saturation": "madmedian",
+	"stats_type_velocity": "madmedian",
+	"stats_type_noise": "median",
+	"sigma_noise_threshold": 9,
+	"stats_type_threshold": "madmedian",
+	"stats_type_smoothing": "madmedian",
+	"stats_type_baselinefit": "madmedian",
+	"stats_type_wtsmooth": "madmedian"
+    },
+    "smoothing":{
+	"smooth_type": "mean",
+	"kernel_size_limit": 250,	
+	"wt_kernels_size_INPUT": [3,11,21,121,301],
+	"wt_kernel_size_limit_SEQUENCE": 500,	
+	"envelop_xy_bins":1024,
+	"envelop_xy_smooth_kernel": "hamming",
+	"envelop_xy_smooth_kernel_size": 31,
+	"window_size_start_thresholding": 101
+    },
+    "filter":{
+	"wt_filter_type_INPUT": ["scharrx","robx","canny"],
+	"wt_kernel_size_limit_SEQUENCE": 500,
+	"wt_kernel_ADD_ON_SEQUENCE": ["robx"],
+	"wt_interpoltype": "Gaussian",
+	"wt_interpoltype_setting_gauss_smooth_size": 0.1,
+	"wt_interpoltype_setting_gauss_smooth_sigma": 0.05
+    },
+    "cleaning":{
+	"fraction_channel":0.7,
+	"fraction_time":0.7,
+	"clean_bins_freq": [[1,0,1],[1,0,0,1],[1,0,0,0,1],[1,0,0,0,0,1],[1,0,0,0,0,0,1],[1,0,0,0,1,0,0,0,1]],
+	"clean_bins_time": [[1,0,1],[1,0,0,1],[1,0,0,0,1],[1,0,0,0,0,1],[1,0,0,0,0,0,1],[1,0,0,0,1,0,0,0,1],[1, 0, 0, 0, 0, 0, 0, 1],[1, 0, 0, 0, 0, 0, 0, 0, 1],[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]]
+        }
+}

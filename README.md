@@ -321,9 +321,16 @@ width=25%>
 
 
 **Flagging in frequency by outliers applying a spectral baseline fit (--FG_BSLF_SIGMA=)**
-Using various baseline fits by the pybaselines package and determine
+Using various baseline fits by the [pybaselines package](
+https://pybaselines.readthedocs.io/en/latest/) and determine
 the minimum derivation to select the best fit and use the difference
 to determine outliers.
+
+The following baseline fit functions are used from pybaselines:
+                              whittaker.airpls, whittaker.arpls,
+                              whittaker.aspls, whittaker.derpsalsa ,
+                              whittaker.drpls, whittaker.iarpls,
+                              whittaker.iasls, whittaker.psalsa
 
 ```
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_BSLF_SIGMA=6 --PLOT_SPEC

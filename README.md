@@ -416,11 +416,7 @@ width=25%>
 
 ## Additional information
 
-1. [Information on SKAMPI data](https://github.com/hrkloeck/SKAMPI_DATA/tree/main)
-
-2. [Setup your working environment](https://github.com/hrkloeck/SKAMPI_DATA/tree/main/setup_environment)
-
-3. Some explanation to the settings file RFI_WIPER_SETTINGS.json
+1. Some explanation to the settings file RFI_WIPER_SETTINGS.json
 
 
 This still needs to come in 2026!
@@ -434,5 +430,11 @@ changed to (hamming, gaussian, median, wiener, minimum) and with
 wt_kernels_size_limit 
 
 this is a powerfull tool setting.
+
+
+2. [Information on SKAMPI data](https://github.com/hrkloeck/SKAMPI_DATA/tree/main)
+
+3. [Setup your working environment](https://github.com/hrkloeck/SKAMPI_DATA/tree/main/setup_environment)
+
 
 

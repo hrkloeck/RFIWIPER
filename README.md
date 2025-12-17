@@ -5,12 +5,6 @@ of the SKAMPI telescope. Note that the software is a completly rewrote of the
 RFIWIPER_2025 software package.
 
 
-Contribution from:
-
-	- Claudia Comito
-    - Tobias Winchen 
-
-
 SKAMPI observation are stored in the HDF5 file file format with all
 the availible meta data information availible by the special data
 strutcture of the MPIfR.
@@ -444,4 +438,9 @@ this is a powerfull tool setting.
 3. [Setup your working environment](https://github.com/hrkloeck/SKAMPI_DATA/tree/main/setup_environment)
 
 
+
+## Contributing people
+
+	- Claudia Comito
+    - Tobias Winchen 
 

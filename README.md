@@ -75,7 +75,7 @@ Options:
                         determine flags based on filtering and thresholding
                         the entire waterfall spectrum, see RFI_SETTINGS.json.
                         very slow ! [default = 0 is off use e.g. = 3]
-  --DONOT_CLEANUP_MASK  Clean up the processed mask, use specific pattern and
+  --FG_CLEANUP_MASK     Clean up the processed mask, use specific pattern and
                         on the percentage in time and channel, see
                         RFI_SETTINGS.json. [default = False]
   --CHANGE_COORDS_TO_AZEL
@@ -393,7 +393,7 @@ width=25%>
 
 
 
-**Flagging on pattern in the mask (--DONOT_CLEANUP_MASK)**
+**Flagging on pattern in the mask (--FG_CLEANUP_MASK)**
 Work on the mask an check for single isolated channels, etc. The
 pattern are defined in the RFI_SETTINGS.json file.
 
@@ -419,7 +419,7 @@ that will be used in the nest step.
 python SKAMPI_RFI_WIPER.py
 --DATA_FILE=../../../OBSERVATION_EXAMPLES/EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5
 --USE_SCAN="['000','001']" --USE_DATA="['P0']" --FG_GROWTHRATE_SIGMA=3
---FG_SMOOTH_SIGMA=3 --PROCESSING_TYPE=INPUT --DONOT_CLEANUP_MASK  --PLOT_SPEC --PLOT_WATERFALL
+--FG_SMOOTH_SIGMA=3 --PROCESSING_TYPE=INPUT --PLOT_SPEC --PLOT_WATERFALL
 ```
 
 look at the output 

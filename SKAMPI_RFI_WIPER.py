@@ -1075,7 +1075,7 @@ def new_argument_parser():
     parser.add_option('--FG_WT_FILTERING_SIGMA', dest='wtbyfilter_fg_sigma', type=float, default=0,
                       help='determine flags based on filtering and thresholding the entire waterfall spectrum, see RFI_SETTINGS.json. very slow ! [default = 0 is off use e.g. = 3]')
     
-    parser.add_option('--DONOT_CLEANUP_MASK', dest='docleanup_mask',action='store_false', default=True,
+    parser.add_option('--FG_CLEANUP_MASK', dest='docleanup_mask',action='store_true', default=False,
                       help='Clean up the processed mask, use specific pattern and on the percentage in time and channel, see RFI_SETTINGS.json. [default = False]')
 
     parser.add_option('--CHANGE_COORDS_TO_AZEL', dest='rad_dec_scan', action='store_false',

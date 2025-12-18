@@ -416,36 +416,40 @@ that will be used in the nest step.
 
 
 ```
-python SKAMPI_RFI_WIPER.py
---DATA_FILE=../../../OBSERVATION_EXAMPLES/EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5
---USE_SCAN="['000','001']" --USE_DATA="['P0']" --FG_GROWTHRATE_SIGMA=3
---FG_SMOOTH_SIGMA=3 --PROCESSING_TYPE=INPUT --PLOT_SPEC --PLOT_WATERFALL
+python SKAMPI_RFI_WIPER.py --DATA_FILE=../../../OBSERVATION_EXAMPLES/EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_VELO_SIGMA=6 --FG_NOISE_SIGMA=3 --FG_GROWTHRATE_SIGMA=3 --FG_SMOOTH_SIGMA=4 --PROCESSING_TYPE=INPUT --PLOT_SPEC --PLOT_WATERFALL --SAVE_PLOT
 ```
 
 look at the output 
 
+
+	
 	generate mask for :  scan/000/P0_ND0/
 
+	- Scanning velocity FG in time
+		 flagged:  48 time steps
+	- Noise-std-stats FG in channels
+		 flagged:  295 channels
 	- FG channels on growth rate spectrum
-		 flagged:  595 channels
+		 flagged:  891 channels
 	- FG channels on smooth spectrum
 		 kernel:  mean , size  [83, 43, 11, 7, 5, 3]  Type  INPUT
 			 SWPD  :  1024
 			 boundary smoothing kernel:  hamming , size  31
-		 flagged:  2591 channels
+		 flagged:  2672 channels
 
-	Full masking needed  0.3544179999999999  [s]
+	Full masking needed  4.025533000000001  [s]
+	
+	 === Generate 1d Spectrum plot ===
 
-   === Generate 1d Spectrum plot ===
-
-	mask:                scan/000/P0_ND0/   3  %
-	generate plot for :  scan/000/P0_ND0/
-
-   === Generate waterfall plot ===
-
-	mask:                scan/000/P0_ND0/   3  %
+	mask:                scan/000/P0_ND0/   11  %
 	generate plot for :  scan/000/P0_ND0/
 	
+     === Generate waterfall plot ===
+
+	mask:                scan/000/P0_ND0/   11  %
+	generate plot for :  scan/000/P0_ND0/
+
+
 Note to make the flagging applied to the dataset you need to set --EDIT_MASK
 
 This seems to generate a reasonable clean spectrum.

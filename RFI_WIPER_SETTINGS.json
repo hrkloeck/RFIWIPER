@@ -8,14 +8,15 @@
 	"stats_type_threshold": "madmedian",
 	"stats_type_smoothing": "madmedian",
 	"stats_type_baselinefit": "madmedian",
-	"stats_type_wtsmooth": "madmedian"
+	"stats_type_wtsmooth": "madmedian",
+	"stats_type_growthrate": "median"
     },
     "smoothing":{
 	"smooth_type": "mean",
-	"kernel_size_limit": 250,	
-	"wt_kernels_size_INPUT": [3,11,21,121,301],
-	"wt_kernel_size_limit_SEQUENCE": 500,	
-	"envelop_xy_bins":1024,
+	"sp_wt_kernels_size_INPUT": [83,43,11,7,5,3],
+	"sp_wt_kernel_size_limit_SEQUENCE": 100,	
+	"envelop_xy_spwd": 1024,
+	"envelop_growthrate_spwd": 64,
 	"envelop_xy_smooth_kernel": "hamming",
 	"envelop_xy_smooth_kernel_size": 31,
 	"window_size_start_thresholding": 101

@@ -61,6 +61,7 @@ def main():
     time_fg_sigma             = opts.time_fg_sigma
     saturation_fg_sigma       = opts.saturation_fg_sigma
     noise_fg_sigma            = opts.noise_fg_sigma
+    growthrate_fg_sigma       = opts.growthrate_fg_sigma
     smooth_fg_sigma           = opts.smooth_fg_sigma
     smooth_thresh_fg_sigma    = opts.smooth_thresholding_fg_sigma
     bslf_fg_sigma             = opts.bslf_fg_sigma
@@ -237,7 +238,9 @@ def main():
 
 
                 # ---------------------------------------------------------------------------------------------
-                # spectrum flagging individual times (takes care of ampl) DO NOT USE THE NOISE DIODE DATA HERE
+                # spectrum flagging individual times (by determine the mean and derivations of the ampl)
+                #
+                # DO NOT USE THE NOISE DIODE DATA HERE
                 #
                 # (flagged times will not be used in the spectrum flagging and is present in the final mask)
                 # ---------------------------------------------------------------------------------------------
@@ -289,7 +292,8 @@ def main():
                     time_mask    = np.sum(full_mask,axis=1).mask
 
                     # determine new mask by thresholding saturation
-                    time_mask_sat = RFIL.threshold_data(data=satur,reference_data=satur,data_mask=time_mask,sigma=saturation_fg_sigma,stats_type=stats_type_saturation,mask_true_flag=True)
+                    time_mask_sat = RFIL.threshold_data(data=satur,reference_data=satur,data_mask=time_mask,\
+                                                            sigma=saturation_fg_sigma,stats_type=stats_type_saturation,mask_true_flag=True)
 
                     
                     fg_sat = 0 
@@ -333,7 +337,8 @@ def main():
                     time_mask    = np.sum(full_mask,axis=1).mask
 
                     # determine new mask by thresholding saturation
-                    time_mask_velo = RFIL.threshold_data(data=scan_velo_vec,reference_data=scan_velo_vec,data_mask=time_mask,sigma=velo_fg_sigma,stats_type=stats_type_velocity,mask_true_flag=True)
+                    time_mask_velo = RFIL.threshold_data(data=scan_velo_vec,reference_data=scan_velo_vec,\
+                                                             data_mask=time_mask,sigma=velo_fg_sigma,stats_type=stats_type_velocity,mask_true_flag=True)
 
 
                     fg_velo = 0
@@ -348,8 +353,8 @@ def main():
 
 
                 # ---------------------------------------------------------------------------------------------
-                # flagging by relation of noise and strengh of the signal 
-                #
+                # flagging by relation of noise and strengh of the signal averages the waterfall in time and 
+                # determine the statistics per channel
                 # ---------------------------------------------------------------------------------------------
                 
                 if noise_fg_sigma > 0:
@@ -361,7 +366,9 @@ def main():
                     sigma_threshold          = para_code_input['stats_type_flagging']['sigma_noise_threshold']
                     #
 
-                    lf_mask = RFIL.flag_waterfall_by_noise_variation_in_channels(spectrum_data,new_mask,sigma_threshold,noise_fg_sigma,stats_type_threshold,stats_type_noise,mask_true_flag=True)
+                    lf_mask = RFIL.flag_waterfall_by_noise_variation_in_channels(spectrum_data,new_mask,\
+                                                                                     sigma_threshold,noise_fg_sigma,\
+                                                                                     stats_type_threshold,stats_type_noise,mask_true_flag=True)
                     
                     #
                     rfi_std_mean_fg_chan = 0
@@ -388,7 +395,7 @@ def main():
                     
                     # get the setting for the envelope statistics
                     #
-                    envelop_bins                  = para_code_input['smoothing']['envelop_xy_bins']
+                    envelop_bins                  = para_code_input['smoothing']['envelop_xy_spwd']
                     envelop_smooth_kernel         = para_code_input['smoothing']['envelop_xy_smooth_kernel']
                     envelop_smooth_kernel_size    = para_code_input['smoothing']['envelop_xy_smooth_kernel_size']
                     
@@ -397,9 +404,9 @@ def main():
                     smooth_type_intensity         = para_code_input['smoothing']['smooth_type']
                     #
                     if flagprocessing == 'INPUT':
-                        kernels            = para_code_input['smoothing']['wt_kernels_size_INPUT']
+                        kernels            = para_code_input['smoothing']['sp_wt_kernels_size_INPUT']
                     else:
-                        kernel_size_limit  = para_code_input['smoothing']['wt_kernel_size_limit_SEQUENCE']
+                        kernel_size_limit  = para_code_input['smoothing']['sp_wt_kernel_size_limit_SEQUENCE']
                         kernels            = RFIL.kernel_sequence(kernel_size_limit,kernel_sequence_type=flagprocessing)
 
 
@@ -483,9 +490,54 @@ def main():
 
                 # =============================================================================================
 
-                            
+
                 # =============================================================================================
                 #
+
+
+                # ---------------------------------------------------------------------------------------------
+                # flagging on growthrate on the average 1d spectrum  
+                # ---------------------------------------------------------------------------------------------
+
+                if growthrate_fg_sigma > 0:
+
+                    # Here get the stats_type [default is madmedian] to determine the mean and std
+                    #
+                    stats_type_growthrate   = para_code_input['stats_type_flagging']['stats_type_growthrate']
+                    #
+                    envelop_xy_bins               = para_code_input['smoothing']['envelop_growthrate_spwd']
+                    envelop_xy_smooth_kernel      = para_code_input['smoothing']['envelop_xy_smooth_kernel']
+                    envelop_xy_smooth_kernel_size = para_code_input['smoothing']['envelop_xy_smooth_kernel_size']
+
+                    
+                    # get the single averaged spectrum
+                    #
+                    spectrum_masked          = ma.masked_array(spectrum_data,mask=new_mask,fill_value=np.nan)
+                    #
+                    intensity                = spectrum_masked.mean(axis=0)[1:] # note exclude first channel to get base 2 number of channels
+                    channels                 = np.arange(len(intensity))
+
+                    
+                    # 
+                    #
+                    gwr_select = RFIL.flag_spectrum_by_growthratechanges(channel=channels,intensity=intensity.data,mask=intensity.mask,\
+                                                                             stats_type_threshold=stats_type_growthrate,sigma_threshold=growthrate_fg_sigma,\
+                                                                             envelop_bins=envelop_xy_bins,sigma_envelop=growthrate_fg_sigma,\
+                                                                                        smooth_type_envelop=envelop_xy_smooth_kernel,\
+                                                                                        smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size)
+                    #
+                    gwr_fg_chan = 0
+                    for i in range(len(gwr_select)):
+                            if gwr_select[i] == True:
+                                new_mask[:,i+1] = True
+                                gwr_fg_chan += 1
+
+                    if toutput:
+                        print('\t- FG channels on growth rate spectrum')
+                        print('\t\t flagged: ',gwr_fg_chan,'channels ')
+
+                        
+                    
                 # ---------------------------------------------------------------------------------------------
                 # flagging by smoothing with various kernel sizes on an average 1d spectrum  
                 # ---------------------------------------------------------------------------------------------
@@ -495,11 +547,11 @@ def main():
                     # Here get the stats_type [default is madmedian] to determine the mean and std
                     #
                     smooth_type_intensity         = para_code_input['smoothing']['smooth_type']
-                    envelop_xy_bins               = para_code_input['smoothing']['envelop_xy_bins']
+                    envelop_xy_bins               = para_code_input['smoothing']['envelop_xy_spwd']
                     envelop_xy_smooth_kernel      = para_code_input['smoothing']['envelop_xy_smooth_kernel']
                     envelop_xy_smooth_kernel_size = para_code_input['smoothing']['envelop_xy_smooth_kernel_size']
                     #
-                    kernel_size_limit             = para_code_input['smoothing']['kernel_size_limit']
+                    kernel_size_limit             = para_code_input['smoothing']['sp_wt_kernel_size_limit_SEQUENCE']
                     
                     # get the single averaged spectrum
                     #
@@ -508,19 +560,16 @@ def main():
                     intensity                = spectrum_masked.mean(axis=0)[1:] # note exclude first channel to get base 2 number of channels
                     channels                 = np.arange(len(intensity))
 
-                    # determine the number of spwd
-                    #
-                    splitting_in_bins_base_2 = (np.log(len(channels)/envelop_xy_bins)/np.log(2))
-
                     if flagprocessing != 'INPUT':
                         kernels     = RFIL.kernel_sequence(kernel_size_limit,kernel_sequence_type=flagprocessing)
                     else:
-                        kernels     = para_code_input['smoothing']['kernels']
+                        kernels     = para_code_input['smoothing']['sp_wt_kernels_size_INPUT']
                         
                     smoo_select = RFIL.flag_spectrum_by_thresholding_with_smoothing(channel=channels,intensity=intensity.data,mask=intensity.mask,\
                                                                                         smooth_type_intensity=smooth_type_intensity,smooth_kernel_sizes_intensity=kernels,\
-                                                                               envelop_bins=splitting_in_bins_base_2,sigma_envelop=smooth_fg_sigma,\
-                                                                                        smooth_type_envelop=envelop_xy_smooth_kernel,smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size)
+                                                                               envelop_bins=envelop_xy_bins,sigma_envelop=smooth_fg_sigma,\
+                                                                                        smooth_type_envelop=envelop_xy_smooth_kernel,\
+                                                                                        smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size)
 
                     
                     #
@@ -583,7 +632,7 @@ def main():
                     #
                     stats_type_baselinefit  = para_code_input['stats_type_flagging']['stats_type_baselinefit']
                     #
-                    envelop_xy_bins               = para_code_input['smoothing']['envelop_xy_bins']
+                    envelop_xy_bins               = para_code_input['smoothing']['envelop_xy_spwd']
                     envelop_xy_smooth_kernel      = para_code_input['smoothing']['envelop_xy_smooth_kernel']
                     envelop_xy_smooth_kernel_size = para_code_input['smoothing']['envelop_xy_smooth_kernel_size']
 
@@ -599,8 +648,10 @@ def main():
                     splitting_in_bins_base_2 = (np.log(len(channels)/envelop_xy_bins)/np.log(2))
 
 
-                    bslf_mask,bsl_fit_info  = RFIL.flag_spectrum_by_basline_fitting(channels,intensity.data,intensity.mask,stats_type_baselinefit,envelop_bins=splitting_in_bins_base_2,sigma_envelop=bslf_fg_sigma,\
-                                                                                smooth_type_envelop=envelop_xy_smooth_kernel,smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size)
+                    bslf_mask,bsl_fit_info  = RFIL.flag_spectrum_by_basline_fitting(channels,intensity.data,intensity.mask,stats_type_baselinefit,\
+                                                                                        envelop_bins=splitting_in_bins_base_2,sigma_envelop=bslf_fg_sigma,\
+                                                                                smooth_type_envelop=envelop_xy_smooth_kernel,\
+                                                                                        smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size)
 
 
                     # here do the flagging
@@ -992,7 +1043,7 @@ def new_argument_parser():
                       help='Flag selection [[BLC [channel,time],TRC [channel, time]], ...] in the waterfallplot e.g [[[0,10],[5000,110]],[[10000,500],[15000,510]]]')
 
     parser.add_option('--FG_TIME_SIGMA', dest='time_fg_sigma', type=float,default=0,
-                      help='determine bad time use threshold. default = 0 is off use e.g. = 5')
+                      help='determine bad time use threshold on amplitude. default = 0 is off use e.g. = 5')
 
     parser.add_option('--FG_SATURATION_SIGMA', dest='saturation_fg_sigma', type=float,default=0,
                       help='use the saturation information to flag. default = 0 is off use e.g. = 3')
@@ -1002,6 +1053,9 @@ def new_argument_parser():
 
     parser.add_option('--FG_NOISE_SIGMA', dest='noise_fg_sigma', type=float, default=0,
                       help='determine flags based on the linear relation of noise and power. [default = 0 is off use e.g. = 3]')
+
+    parser.add_option('--FG_GROWTHRATE_SIGMA', dest='growthrate_fg_sigma', type=float, default=0,
+                      help='determine flags based on the growthrate function outliers. [default = 0 is off use e.g. = 6]')
 
     parser.add_option('--FG_SMOOTH_SIGMA', dest='smooth_fg_sigma', type=float, default=0,
                       help='determine flags based on increase smooth kernel and thresholding on difference org smooth spectra, use also PROCESSING_TYPE see RFI_SETTINGS.json. [default = 0 is off use e.g. = 3]')

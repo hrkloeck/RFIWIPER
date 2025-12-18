@@ -38,7 +38,47 @@ import RFI_WIPER_TOOLS_STATISTIC as STS
 # ===========================================================================
 
 
-def flag_spectrum_by_thresholding_with_smoothing(channel,intensity,mask,smooth_type_intensity,smooth_kernel_sizes_intensity,envelop_bins,sigma_envelop,smooth_type_envelop,smooth_kernel_size_envelop):
+def flag_spectrum_by_growthratechanges(channel,intensity,mask,stats_type_threshold,sigma_threshold,envelop_bins,sigma_envelop,smooth_type_envelop,smooth_kernel_size_envelop,showenvelopplot=False):
+                                                                                
+    """
+    determine the functional growthrate f(x) * f'(x) 
+    
+    use sigma threshold for flagging and envelop masking
+    on the changes of the growth rate
+
+    output is an updated mask
+    """
+
+    mask_select     = copy(mask)
+    mask_select_org = copy(mask)
+
+
+    interpol_channel, interpol_intensity = interpolate_spectrum(channel,intensity,mask_select,new_channels=None,interpol_type='extrapolate',mask_true_flag=True)
+
+    growthrate = interpol_intensity * np.gradient(interpol_intensity,interpol_channel)
+
+    growthrate = np.diff(growthrate,append=0)
+    
+    # determine new mask by thresholding 
+    mask_select = threshold_data(data=growthrate,reference_data=growthrate,data_mask=mask_select,\
+                                             sigma=sigma_threshold,stats_type=stats_type_threshold,mask_true_flag=True)
+                                             
+    # determine the number of channels per spwd
+    #
+    splitting_in_bins_base_2 = (np.log(len(channel)/envelop_bins)/np.log(2))
+
+    # determine new mask by envelope thresholding        
+    mask_select                          = error_envelope_xy(interpol_channel,growthrate,mask_select,splitting_in_bins_base_2,sigma_envelop,\
+                                                                                smooth_type_envelop,smooth_kernel_size_envelop,interpol_type='extrapolate',\
+                                                                 mask_true_flag=True,showenvelopplot=showenvelopplot)
+
+    # update the mask 
+    mask_select = np.logical_or(mask_select,mask_select_org)
+
+    return mask_select
+
+
+def flag_spectrum_by_thresholding_with_smoothing(channel,intensity,mask,smooth_type_intensity,smooth_kernel_sizes_intensity,envelop_bins,sigma_envelop,smooth_type_envelop,smooth_kernel_size_envelop,showenvelopplot=False):
                                                                                 
     """
     iterrative smoothing the spectrum with increasing kernel sizes 
@@ -49,7 +89,12 @@ def flag_spectrum_by_thresholding_with_smoothing(channel,intensity,mask,smooth_t
 
     mask_select     = copy(mask)
     mask_select_org = copy(mask)
-    
+
+
+    # determine the number of channels per spwd
+    #
+    splitting_in_bins_base_2 = (np.log(len(channel)/envelop_bins)/np.log(2))
+
     for k in smooth_kernel_sizes_intensity:
         
         mask_select_org = mask_select
@@ -64,8 +109,9 @@ def flag_spectrum_by_thresholding_with_smoothing(channel,intensity,mask,smooth_t
         
         smoo_amp_interpol_bslcorr            = interpol_intensity - convolve_1d_data(interpol_intensity,smooth_type=smooth_type_intensity,smooth_kernel_size=k)
 
-        mask_select                          = error_envelope_xy(interpol_channel,smoo_amp_interpol_bslcorr,mask_select,envelop_bins,sigma_envelop,\
-                                                                                smooth_type_envelop,smooth_kernel_size_envelop,interpol_type='extrapolate',mask_true_flag=True)
+        mask_select                          = error_envelope_xy(interpol_channel,smoo_amp_interpol_bslcorr,mask_select,splitting_in_bins_base_2,sigma_envelop,\
+                                                                                smooth_type_envelop,smooth_kernel_size_envelop,interpol_type='extrapolate',\
+                                                                     mask_true_flag=True,showenvelopplot=showenvelopplot)
 
         # update the mask 
         mask_select = np.logical_or(mask_select,mask_select_org)
@@ -270,8 +316,6 @@ def flag_waterfall_by_noise_variation_in_channels(wtspectrum,mask,sigma_threshol
     #
     RFI_mean    = RFI_std_mean_mask_data_2.mean(axis=0)
     RFI_std     = RFI_std_mean_mask_data_2.std(axis=0)
-
-
 
     #
     linear_fit  = np.polyfit(RFI_mean,RFI_std, 2)
@@ -548,7 +592,7 @@ def fill_masked_data(data,mask,mask_true_flag=True,interpol_type='CloughTocher',
 
 # https://sustainabilitymethods.org/index.php/Outlier_Detection_in_Python
 
-def error_envelope_xy(data_x,data_y,mask,bins,sigma,smooth_type,smooth_kernel,interpol_type='extrapolate',mask_true_flag=True):
+def error_envelope_xy(data_x,data_y,mask,bins,sigma,smooth_type,smooth_kernel,interpol_type='extrapolate',mask_true_flag=True,showenvelopplot=False):
     """
     determine the error envelope of a distribution of point along an axis 
     with varying errors
@@ -563,7 +607,7 @@ def error_envelope_xy(data_x,data_y,mask,bins,sigma,smooth_type,smooth_kernel,in
     """
     new_data_x              = None
     idata_x, idata_y        = interpolate_spectrum(data_x,data_y,mask,new_data_x,interpol_type,mask_true_flag)
-
+    
     # split data in 
     bin_data_x              = np.array_split(idata_x,2**bins)
     bin_data_y              = np.array_split(idata_y,2**bins)
@@ -580,6 +624,16 @@ def error_envelope_xy(data_x,data_y,mask,bins,sigma,smooth_type,smooth_kernel,in
     #
     mask[select_up]         = mask_true_flag
     mask[select_low]        = mask_true_flag
+
+    if showenvelopplot:
+        # This is for debugging purpose
+        from matplotlib import pylab as plt
+        plt.scatter(data_x,data_y)
+        plt.plot(data_x,bound_up_interpoled)
+        plt.plot(data_x,bound_low_interpoled)
+        plt.show()
+        print('\n\nOk you want to play around with the input parameter,\n envelop_xy_bins,envelop_xy_smooth_kernel, envelop_xy_smooth_kernel_size\n\n')
+        sys.exit(-1)
     
     return mask
     

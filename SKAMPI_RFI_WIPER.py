@@ -183,10 +183,9 @@ def main():
              if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
 
                 time_data       = obsfile[d][:]
-                freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
+                #freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
                 #
                 spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
-
                 new_mask        = np.zeros(spectrum_data.shape).astype(bool)
 
                 if toutput:
@@ -201,13 +200,19 @@ def main():
                 # ---------------------------------------------------------------------------------------------
 
                 new_mask[:,0]    = True                    # exclude the DC term of the FFT spectrum in the full spectrum
-                new_mask[:,-1]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
+                new_mask[:,-1]   = True                    # exclude the last channel of the spectrum
 
+
+                # ---------------------------------------------------------------------------------------------
+                # Define channel range not to be used 
+                # ---------------------------------------------------------------------------------------------
+                
                 if len(eval(not_use_chan_range)) > 0:
                     blank_channels = eval(not_use_chan_range)
                     if blank_channels[1] > np.shape(new_mask)[1]:
                         blank_channels[1] =  np.shape(new_mask)[1]
-                    new_mask[:,blank_channels[0]:blank_channels[1]] = True
+                        
+                    new_mask[:,blank_channels[0]+1:blank_channels[1]] = True
                     
 
                 # ---------------------------------------------------------------------------------------------
@@ -353,7 +358,7 @@ def main():
 
 
                 # ---------------------------------------------------------------------------------------------
-                # flagging by relation of noise and strengh of the signal averages the waterfall in time and 
+                # flagging by relation of noise and strengh of the signal, averages the waterfall in time and 
                 # determine the statistics per channel
                 # ---------------------------------------------------------------------------------------------
                 
@@ -418,20 +423,18 @@ def main():
                         else:
                             print('\t\t use the following kernels: ',kernels)
 
-                        
                     wt_mask  = RFIL.flag_waterfall_by_thresholding_with_smoothing_for_each_timestep(spectrum_data,new_mask,\
                                                                                                         flagprocessing,smooth_type_intensity,kernels,\
                                                                                                         envelop_bins,wtbysmoothingrow_fg_sigma,\
-                                                                                                        envelop_smooth_kernel,envelop_smooth_kernel_size)
+                                                                                                        envelop_smooth_kernel,envelop_smooth_kernel_size,toutput)
                     if toutput:
                         print('\t\t flags generated: ',np.count_nonzero(wt_mask)-np.count_nonzero(new_mask))
 
-                    new_mask = copy(wt_mask)
-
+                    new_mask = copy(np.logical_or(new_mask,wt_mask))
 
 
                 # ---------------------------------------------------------------------------------------------
-                # flag the waterfall spectrum (2d) by convolution (specific filter) and thresholding  
+                # flag the waterfall spectrum (2d) by either filtering or convolution and thresholding  
                 # ---------------------------------------------------------------------------------------------
 
                 if wtbyfilter_fg_sigma > 0:
@@ -458,19 +461,21 @@ def main():
 
                     
                     if flagprocessing == 'INPUT':
-                        filter_seq     = RFIL.filter_sequence(para_code_input['filter']['wt_filter_type_INPUT'],filter_limit=None,sequence_type=flagprocessing)
+                        filter_seq, filter_seq_type    = RFIL.filter_sequence(para_code_input['filter']['wt_filter_type_INPUT'],filter_limit=None,sequence_type=flagprocessing)
                     else:
                         wtkernel_size_limit = para_code_input['filter']['wt_kernel_size_limit_SEQUENCE']
-                        filter_seq     = RFIL.filter_sequence(filters=None,filter_limit=wtkernel_size_limit,sequence_type=flagprocessing,gauss_sigma=gauss_sigma,gauss_size=gauss_size)
+                        filter_seq, filter_seq_type    = RFIL.filter_sequence(filters=None,filter_limit=wtkernel_size_limit,sequence_type=flagprocessing,gauss_sigma=gauss_sigma,gauss_size=gauss_size)
 
                         add_on_filter_to_sequence = para_code_input['filter']['wt_kernel_ADD_ON_SEQUENCE']
                         #
                         if len(add_on_filter_to_sequence) > 0:
-                            add_on = RFIL.filter_sequence(add_on_filter_to_sequence,filter_limit=None,sequence_type='INPUT')
+                            add_on,add_on_type = RFIL.filter_sequence(add_on_filter_to_sequence,filter_limit=None,sequence_type='INPUT')
                             filter_seq += add_on
+                            filter_seq_type += add_on_type
 
+                    
                     if toutput:
-                        print('\t- FG waterfall with filter and thresholds entire spectrum')
+                        print('\t- FG waterfall with ',np.unique(filter_seq_type),'and thresholds entire spectrum')
                         print('\t\t CAUTION might be very slooooooooooooow')
                         print('\t\t --PROCESSING_TYPE='+flagprocessing)
                         if len(filter_seq) > 10:
@@ -479,14 +484,14 @@ def main():
                             print('\t\t use the following filter: ',filter_seq)
 
 
-                    wt_mask         = RFIL.flag_waterfall_by_filtering_with_convolutional_smoothing(spectrum_data,new_mask,\
-                                                                                                           flagprocessing,filter_seq,\
+                    ft_mask         = RFIL.flag_waterfall_by_filtering_with_convolutional_smoothing(spectrum_data,new_mask,\
+                                                                                                           flagprocessing,filter_seq,filter_seq_type,\
                                                                                                            wtbyfilter_fg_sigma,stats_type=stats_type_wtfilter,\
                                                                                                            interpol_type=interpol_type,gauss_sigma=gauss_sigma,gauss_size=gauss_size)
                     if toutput:
-                        print('\t\t flags generated: ',np.count_nonzero(wt_mask)-np.count_nonzero(new_mask))
+                        print('\t\t flags generated: ',np.count_nonzero(ft_mask)-np.count_nonzero(new_mask))
 
-                    new_mask = copy(wt_mask)
+                    new_mask = copy(np.logical_or(new_mask,ft_mask))
 
                 # =============================================================================================
 
@@ -737,7 +742,7 @@ def main():
                     # here we include the previous channels not to do the flagging on
                     #
                     blank_channels = eval(not_use_chan_range)
-                    new_mask[:,blank_channels[0]:blank_channels[1]] = False
+                    new_mask[:,blank_channels[0]+1:blank_channels[1]] = False                    
                     #
                     new_mask[:,0]    = True                    # exclude the DC term of the FFT spectrum in the full spectrum
                     new_mask[:,-1]   = True                    # exclude the DC term of the FFT spectrum in the full spectrum
@@ -835,7 +840,6 @@ def main():
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
                 spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
-
                 freq           = obsfile[d.replace('timestamp','frequency')][:]
 
                 if doplot_with_invert_mask:

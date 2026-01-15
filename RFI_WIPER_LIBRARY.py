@@ -90,11 +90,10 @@ def flag_spectrum_by_thresholding_with_smoothing(channel,intensity,mask,smooth_t
     mask_select     = copy(mask)
     mask_select_org = copy(mask)
 
-
     # determine the number of channels per spwd
     #
     splitting_in_bins_base_2 = (np.log(len(channel)/envelop_bins)/np.log(2))
-
+    
     for k in smooth_kernel_sizes_intensity:
         
         mask_select_org = mask_select
@@ -300,10 +299,12 @@ def flag_waterfall_by_noise_variation_in_channels(wtspectrum,mask,sigma_threshol
 
 
     # determine new mask by thresholding saturation
+    #
     chan_mask = threshold_data(data=std_over_time_per_freq.data,reference_data=std_over_time_per_freq.compressed(),data_mask=std_over_time_per_freq.mask,\
                                              sigma=sigma_threshold,stats_type=stats_type_threshold,mask_true_flag=True)
 
     # update the original mask
+    #
     for i in range(len(chan_mask)):
         if chan_mask[i] == 1:
             mask[:,i] = True
@@ -330,13 +331,15 @@ def flag_waterfall_by_noise_variation_in_channels(wtspectrum,mask,sigma_threshol
     lf_mask             = threshold_data(data=RFI_std_cor.data,reference_data=RFI_std_cor.compressed(),data_mask=RFI_std_cor.mask,sigma=sigma_noise,\
                                                       stats_type=stats_type_noise,mask_true_flag=True)
 
+                                                      
     # the last function cpuld also determined by error_envelope_xy
                                                       
     return lf_mask
     
 
 
-def flag_waterfall_by_thresholding_with_smoothing_for_each_timestep(wtspectrum,mask,flagprocessing,smooth_type_intensity,smooth_kernel_sizes_intensity,envelop_bins,sigma_envelop,smooth_type_envelop,smooth_kernel_size_envelop):
+def flag_waterfall_by_thresholding_with_smoothing_for_each_timestep(wtspectrum,mask,flagprocessing,smooth_type_intensity,\
+                                                                        smooth_kernel_sizes_intensity,envelop_bins,sigma_envelop,smooth_type_envelop,smooth_kernel_size_envelop,toutput=True):
     """
     use the function flag_spectrum_by_thresholding_with_smoothing
     on each time step through the waterfall spectrum
@@ -344,8 +347,7 @@ def flag_waterfall_by_thresholding_with_smoothing_for_each_timestep(wtspectrum,m
     from time import process_time
 
     masking_time    = process_time()
-    
-    org_mask = copy(mask)
+    org_mask        = copy(mask)
 
     for time in range(np.shape(wtspectrum)[0]):
         #
@@ -354,18 +356,18 @@ def flag_waterfall_by_thresholding_with_smoothing_for_each_timestep(wtspectrum,m
         #
         intensity                = wtspectrum[time,1:] # note exclude first channel to get base 2 number of channels
         channels                 = np.arange(len(intensity))
-        intensity_mask           = mask[time,1:] # note exclude first channel to get base 2 number of channels
-        
+        intensity_mask           = org_mask[time,1:] # note exclude first channel to get base 2 number of channels
+
         # check if time has been flagged
         #
         if np.sum(intensity_mask) != len(intensity_mask):
-            # determine the number of spwd
-            #
-            splitting_in_bins_base_2 = (np.log(len(channels)/int(envelop_bins))/np.log(2))
 
+            # note that flag_spectrum_by_thresholding_with_smoothing
+            # need base 2 number of channels
+            #
             smoo_select = flag_spectrum_by_thresholding_with_smoothing(channel=channels,intensity=intensity,mask=intensity_mask,\
                                                                            smooth_type_intensity=smooth_type_intensity,smooth_kernel_sizes_intensity=smooth_kernel_sizes_intensity,\
-                                                                           envelop_bins=splitting_in_bins_base_2,sigma_envelop=sigma_envelop,smooth_type_envelop=smooth_type_envelop,\
+                                                                           envelop_bins=envelop_bins,sigma_envelop=sigma_envelop,smooth_type_envelop=smooth_type_envelop,\
                                                                            smooth_kernel_size_envelop=smooth_kernel_size_envelop)
                     
             for i in range(len(smoo_select)):
@@ -374,14 +376,13 @@ def flag_waterfall_by_thresholding_with_smoothing_for_each_timestep(wtspectrum,m
                     
     procces_time = process_time() - masking_time
     #
-    toutput = True
     if toutput:
         print(' WT each timestep FG time needed ',procces_time,' ')          
 
     return org_mask
 
 
-def flag_waterfall_by_filtering_with_convolutional_smoothing(wtspectrum,mask,flagprocessing,kernels,sigma_threshold,stats_type='madmean',interpol_type='CloughTocher',gauss_sigma=0,gauss_size=0):
+def flag_waterfall_by_filtering_with_convolutional_smoothing(wtspectrum,mask,flagprocessing,kernels,kernel_types,sigma_threshold,stats_type='madmean',interpol_type='CloughTocher',gauss_sigma=0,gauss_size=0):
     """
     Waterfall spectrum convolution with specific filter 
     """
@@ -393,10 +394,10 @@ def flag_waterfall_by_filtering_with_convolutional_smoothing(wtspectrum,mask,fla
     #
     mask_select     = copy(mask)
     mask_select_org = copy(mask)
-    
-    for k in kernels:
+
+    for k,kt in zip(kernels,kernel_types):
         
-        mask_select_org = mask_select
+        mask_select_org = copy(mask_select)
 
         # 1. interpolate between flagged channels 
         # 2. convolve with specific filter 
@@ -405,19 +406,29 @@ def flag_waterfall_by_filtering_with_convolutional_smoothing(wtspectrum,mask,fla
         # 5. use updated mask and go to 1. repeat with next kernel size
         #
         interpolated_wtspectrum              = fill_masked_data(wtdata,mask_select_org,mask_true_flag=True,interpol_type=interpol_type,gauss_sigma=gauss_sigma,gauss_size=gauss_size)
+
+        #interpolated_wtspectrum = interpolated_wtspectrum1 - np.median(interpolated_wtspectrum1,axis=0)[np.newaxis,:] 
         
         #convolved_interpolated_wtspectrum    = convolve2d(interpolated_wtspectrum,k,mode='same')  # 62.60706 sec
         #convolved_interpolated_wtspectrum    = oaconvolve(interpolated_wtspectrum,k,mode='same',axis=1) # 61.69937 sec
         convolved_interpolated_wtspectrum    = oaconvolve(interpolated_wtspectrum,k,mode='same') # 61.813621 sec
 
-        fullmask_data                        = ma.masked_array(convolved_interpolated_wtspectrum,mask=mask_select_org,fill_value=np.nan)
+        # depending on the filter type either threshod is used on the filter result or
+        # subtracting the original with the smoothed data
+        #
+        if kt == 'smooth':
+            residual_data                        = interpolated_wtspectrum - convolved_interpolated_wtspectrum
+        else:
+            residual_data                        = convolved_interpolated_wtspectrum
 
-        mask_select                          = threshold_data(data=convolved_interpolated_wtspectrum,reference_data=fullmask_data.compressed(),\
+
+
+        mask_select                          = threshold_data(data=residual_data,reference_data=residual_data.flatten(),\
                                                                   data_mask=mask_select_org,sigma=sigma_threshold,stats_type=stats_type,mask_true_flag=True)
-        
-        # update the mask 
-        mask_select = np.logical_or(mask_select,mask_select_org)
 
+        
+        mask_select = np.logical_or(mask_select_org,mask_select)
+        
     return mask_select
 
 
@@ -792,23 +803,29 @@ def filter_sequence(filters,filter_limit=0,sequence_type='FAST',gauss_sigma=None
     """
     generate a sequence of 2d filter kernels
     """
-    filter_seq = []    
+    filter_seq      = []
+    filter_seq_type = []    
+
     if sequence_type == 'INPUT':
         for f in filters:
             if isinstance(f,str):
-                filter_seq.append(smooth_kernels_2d(f)) 
+                filter_seq.append(smooth_kernels_2d(f))
+                filter_seq_type.append('filter')
             else:
                 if hasattr(f,"__len__"): 
                     filter_seq.append(f)
+                    filter_seq_type.append('filter')
                 else:
                     filter_seq.append(gaussian_kernel(k,sigma=gauss_sigma,scale=gauss_size))
+                    filter_seq_type.append('smooth')
 
     else:
         fsq  = kernel_sequence(filter_limit,sequence_type,reverse)
         for f in fsq:
             filter_seq.append(gaussian_kernel(f,sigma=gauss_sigma,scale=gauss_size))
+            filter_seq_type.append('smooth')
 
-    return filter_seq
+    return filter_seq, filter_seq_type
 
 
 def str_in_strlist(string,strlist):

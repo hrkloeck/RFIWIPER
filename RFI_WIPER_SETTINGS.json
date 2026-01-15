@@ -22,12 +22,12 @@
 	"window_size_start_thresholding": 101
     },
     "filter":{
-	"wt_filter_type_INPUT": ["scharrx","robx","canny"],
-	"wt_kernel_size_limit_SEQUENCE": 500,
+	"wt_filter_type_INPUT": ["sobelx","robx"],
+	"wt_kernel_size_limit_SEQUENCE": 30,
 	"wt_kernel_ADD_ON_SEQUENCE": ["robx"],
 	"wt_interpoltype": "Gaussian",
-	"wt_interpoltype_setting_gauss_smooth_size": 0.1,
-	"wt_interpoltype_setting_gauss_smooth_sigma": 0.05
+	"wt_interpoltype_setting_gauss_smooth_size": 0.01,
+	"wt_interpoltype_setting_gauss_smooth_sigma": 0.005
     },
     "cleaning":{
 	"fraction_channel":0.7,

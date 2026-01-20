@@ -20,7 +20,7 @@ observation. The test dataset is EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 an
 Usage: SKAMPI_RFI_WIPER.py [options]
 
 Options:
-  -h, --help            show this help message and exit
+-h, --help            show this help message and exit
   --DATA_FILE=DATAFILE  DATA - HDF5 file of the Prototyp
   --USE_DATA=USEDATA    data to flag, default use all or select e.g.
                         "['P0','P1']" or "['S0']"
@@ -36,8 +36,8 @@ Options:
                         time]], ...] in the waterfallplot e.g
                         [[[0,10],[5000,110]],[[10000,500],[15000,510]]]
   --FG_TIME_SIGMA=TIME_FG_SIGMA
-                        determine bad time use threshold. default = 0 is off
-                        use e.g. = 5
+                        determine bad time use threshold on amplitude. default
+                        = 0 is off use e.g. = 5
   --FG_SATURATION_SIGMA=SATURATION_FG_SIGMA
                         use the saturation information to flag. default = 0 is
                         off use e.g. = 3
@@ -55,26 +55,30 @@ Options:
                         thresholding on difference org smooth spectra, use
                         also PROCESSING_TYPE see RFI_SETTINGS.json. [default =
                         0 is off use e.g. = 3]
+  --FG_SMOOTH_THRESHOLDING_SIGMA=SMOOTH_THRESHOLDING_FG_SIGMA
+                        determine flags based on smooth thresholding spectrum
+                        (Tobi), see RFI_SETTINGS.json. [default = 0 is off use
+                        e.g. = 6]
+  --FG_WT_SMOOTHING_SIGMA=WTBYSMOOTHINGROW_FG_SIGMA
+                        determine flags based on smoothing and thresholding
+                        the waterfall spectrum in each time step, see
+                        RFI_SETTINGS.json. [VERY SLOW, default = 0 is off use
+                        e.g. = 6]
+  --FG_WT_FILTERING_SIGMA=WTBYFILTER_FG_SIGMA
+                        determine flags based on filtering or smoothing and
+                        thresholding the entire waterfall spectrum, see
+                        RFI_SETTINGS.json. [VERY SLOW, default = 0 is off use
+                        e.g. = 3]
   --PROCESSING_TYPE=FLAGPROCESSING
                         setting how accurate/much time the flagging proceed.
                         FAST (default), SLOW, INPUT uses the kernels of the
                         RFI_SETTINGS.json file.
-  --FG_SMOOTH_THRESHOLDING_SIGMA=SMOOTH_THRESHOLDING_FG_SIGMA
-                        determine flags based on smooth thresholding spectrum
-                        (Tobi), see RFI_SETTINGS.json. [default = 0 is off use
-                        e.g. = 10]
+  --FG_WT_BOUND_SIGMA=WF_BOUND_FG_SIGMA
+                        determine flags based on upper and lower boundary.
+                        [e.g. =4, Useful in combination with: --USE_BSLFIT=]
   --FG_BSLF_SIGMA=BSLF_FG_SIGMA
                         determine flags based on spectral baseline fit.
                         [default = 0 is off use e.g. = 10]
-  --FG_WT_SMOOTHING_SIGMA=WTBYSMOOTHINGROW_FG_SIGMA
-                        determine flags based on smoothing and thresholding
-                        the waterfall spectrum in each time step, see
-                        RFI_SETTINGS.json. very slow ! [default = 0 is off use
-                        e.g. = 6]
-  --FG_WT_FILTERING_SIGMA=WTBYFILTER_FG_SIGMA
-                        determine flags based on filtering and thresholding
-                        the entire waterfall spectrum, see RFI_SETTINGS.json.
-                        very slow ! [default = 0 is off use e.g. = 3]
   --FG_CLEANUP_MASK     Clean up the processed mask, use specific pattern and
                         on the percentage in time and channel, see
                         RFI_SETTINGS.json. [default = False]
@@ -98,6 +102,12 @@ Options:
   --SAVE_FINALSPECTRUM=SAVEFINALSPECTRUM
                         Safe the final 1d spectra as numpy npz file. [works
                         only with --DOPLOT_FINAL_SPEC]
+  --SAVE_BSLFIT=SAVEBSLFITSPECTRUM
+                        Safe the 1d baseline fit spectra as numpy npz file.
+                        [works only with --FG_BSLF_SIGMA]
+  --USE_BSLFIT=USEBSLFITSPECTRUM
+                        Use the 1d baseline fit spectra as bandpass numpy npz
+                        file.
   --SILENCE             Switch off all output
   --OBSINFO             Show observation info stored in the file
   --HELP                Show info on input

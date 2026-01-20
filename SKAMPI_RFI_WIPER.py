@@ -11,6 +11,8 @@
 #    baseline flagging
 # - complete rewritten and consolidate
 #   all the functions HRK 12/2025
+# - added baseline fit and subtraction 01/26
+#
 #
 import h5py
 import sys
@@ -66,6 +68,7 @@ def main():
     smooth_thresh_fg_sigma    = opts.smooth_thresholding_fg_sigma
     bslf_fg_sigma             = opts.bslf_fg_sigma
     # 2d flagging input
+    wf_bound_fg_sigma         = opts.wf_bound_fg_sigma
     wtbysmoothingrow_fg_sigma = opts.wtbysmoothingrow_fg_sigma
     wtbyfilter_fg_sigma       = opts.wtbyfilter_fg_sigma
     #
@@ -83,6 +86,9 @@ def main():
     change_flag               = opts.change_flag
     savemask                  = opts.savemask
     loadmask                  = opts.loadmask
+    #
+    savebslfitspectrum        = opts.savebslfitspectrum    
+    usebslfitspectrum         = opts.usebslfitspectrum
     #
     toutput                   = opts.toutput
     #
@@ -173,8 +179,10 @@ def main():
     # time the FG processing
     #
     full_fg_time   = process_time()
-
+    #
     full_new_mask = {}
+    save_bslfit_spectra_data = {}
+    #
     for d in timestamp_keys:
 
              #
@@ -185,8 +193,19 @@ def main():
                 time_data       = obsfile[d][:]
                 #freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
                 #
-                spectrum_data   = obsfile[d.replace('timestamp','')+'spectrum']
-                new_mask        = np.zeros(spectrum_data.shape).astype(bool)
+                waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum']
+                new_mask        = np.zeros(waterfall_data.shape).astype(bool)
+
+                if len(usebslfitspectrum) > 0:
+                    if toutput:
+                        print('\n\tWill use : ',usebslfitspectrum,' for bandpass subtraction.\n')
+
+                    bslfit_data    = RFIL.load_data(usebslfitspectrum)[d.replace('timestamp','')]['baseline_fit_intensity']
+
+
+                    # Subtract the baseline fit of the averaged spectrum from the waterfall data
+                    #
+                    waterfall_data = waterfall_data - bslfit_data[np.newaxis,:]
 
                 if toutput:
                     print('\n\tgenerate mask for : ',d.replace('timestamp',''),'\n')
@@ -258,11 +277,11 @@ def main():
 
                     if RFIL.str_in_strlist(d,flag_on):
 
-                        spectrum_masked              = ma.masked_array(spectrum_data,mask=new_mask,fill_value=np.nan)
-                        median_spectrum_masked       = np.median(spectrum_masked,axis=1)
-
-                        time_mask                    = RFIL.threshold_data(data=median_spectrum_masked.data,reference_data=median_spectrum_masked.compressed(),\
-                                                                            data_mask=median_spectrum_masked.mask,sigma=time_fg_sigma,stats_type=stats_type_auto_time,mask_true_flag=True)
+                        waterfall_masked             = ma.masked_array(waterfall_data,mask=new_mask,fill_value=np.nan)
+                        amplitude_time_data_masked   = np.median(waterfall_masked,axis=1)
+                        
+                        time_mask                    = RFIL.threshold_data(data=amplitude_time_data_masked.data,reference_data=amplitude_time_data_masked.compressed(),\
+                                                                            data_mask=amplitude_time_data_masked.mask,sigma=time_fg_sigma,stats_type=stats_type_auto_time,mask_true_flag=True)
 
                         fg_time = 0 
                         for i in range(len(time_mask)):
@@ -273,7 +292,6 @@ def main():
                         if toutput:
                             print('\t- FG in time')
                             print('\t\t flagged: ',fg_time,'time steps')
-
 
 
                 # ---------------------------------------------------------------------------------------------
@@ -293,17 +311,18 @@ def main():
 
                     # generate 1-dim mask in time from the 2-dim new_mask
                     #
-                    full_mask    = ma.masked_array(new_mask.astype(int),mask=new_mask)
-                    time_mask    = np.sum(full_mask,axis=1).mask
+                    full_mask        = ma.masked_array(new_mask.astype(int),mask=new_mask)
+                    satur_time_mask  = np.sum(full_mask,axis=1).mask
 
+                    
                     # determine new mask by thresholding saturation
-                    time_mask_sat = RFIL.threshold_data(data=satur,reference_data=satur,data_mask=time_mask,\
+                    satur_time_mask_mask = RFIL.threshold_data(data=satur,reference_data=satur,data_mask=satur_time_mask,\
                                                             sigma=saturation_fg_sigma,stats_type=stats_type_saturation,mask_true_flag=True)
 
                     
                     fg_sat = 0 
-                    for i in range(len(time_mask_sat)):
-                            if time_mask_sat[i] == 1:
+                    for i in range(len(satur_time_mask_mask)):
+                            if satur_time_mask_mask[i] == 1:
                                 new_mask[i,:] = True
                                 fg_sat += 1
                                 
@@ -371,7 +390,7 @@ def main():
                     sigma_threshold          = para_code_input['stats_type_flagging']['sigma_noise_threshold']
                     #
 
-                    lf_mask = RFIL.flag_waterfall_by_noise_variation_in_channels(spectrum_data,new_mask,\
+                    lf_mask = RFIL.flag_waterfall_by_noise_variation_in_channels(waterfall_data,new_mask,\
                                                                                      sigma_threshold,noise_fg_sigma,\
                                                                                      stats_type_threshold,stats_type_noise,mask_true_flag=True)
                     
@@ -391,6 +410,28 @@ def main():
 
                 # =============================================================================================
                 #
+
+                # ---------------------------------------------------------------------------------------------
+                # flag the waterfall spectrum (2d) by upper and lower boundary
+                # ---------------------------------------------------------------------------------------------
+                
+                if wf_bound_fg_sigma > 0:
+
+                  mask_select_org               = copy(new_mask)
+                  #
+                  stats_type_wt                 = para_code_input['stats_type_flagging']['stats_type_waterfall']                  
+                  waterfall_data_masked         = ma.masked_array(waterfall_data,mask=mask_select_org,fill_value=np.nan)
+                  #
+                  mask_ul_bound                 = RFIL.threshold_data(data=waterfall_data,reference_data=waterfall_data_masked.compressed(),\
+                                                                  data_mask=mask_select_org,sigma=wf_bound_fg_sigma,stats_type=stats_type_wt,mask_true_flag=True)
+                                                                  
+                  if toutput:
+                      print('\t- Waterfall boundary threshold FG')
+                      print('\t\t flags generated: ',np.count_nonzero(mask_ul_bound)-np.count_nonzero(new_mask))
+
+                  new_mask                  = np.logical_or(new_mask,mask_ul_bound)
+
+                            
                 # ---------------------------------------------------------------------------------------------
                 # flag the waterfall spectrum (2d) by threshold smoothing individual times
                 # ---------------------------------------------------------------------------------------------
@@ -423,7 +464,7 @@ def main():
                         else:
                             print('\t\t use the following kernels: ',kernels)
 
-                    wt_mask  = RFIL.flag_waterfall_by_thresholding_with_smoothing_for_each_timestep(spectrum_data,new_mask,\
+                    wt_mask  = RFIL.flag_waterfall_by_thresholding_with_smoothing_for_each_timestep(waterfall_data,new_mask,\
                                                                                                         flagprocessing,smooth_type_intensity,kernels,\
                                                                                                         envelop_bins,wtbysmoothingrow_fg_sigma,\
                                                                                                         envelop_smooth_kernel,envelop_smooth_kernel_size,toutput)
@@ -456,8 +497,8 @@ def main():
                     #
                     # or use a gaussian filtering with increasing sigma switched on if flagprocessing 
 
-                    gauss_sigma = int(gauss_sigma_fraction * np.min(np.shape(spectrum_data)))
-                    gauss_size  = int(gauss_size_fraction * np.min(np.shape(spectrum_data)))
+                    gauss_sigma = int(gauss_sigma_fraction * np.min(np.shape(waterfall_data)))
+                    gauss_size  = int(gauss_size_fraction * np.min(np.shape(waterfall_data)))
 
                     
                     if flagprocessing == 'INPUT':
@@ -484,7 +525,7 @@ def main():
                             print('\t\t use the following filter: ',filter_seq)
 
 
-                    ft_mask         = RFIL.flag_waterfall_by_filtering_with_convolutional_smoothing(spectrum_data,new_mask,\
+                    ft_mask         = RFIL.flag_waterfall_by_filtering_with_convolutional_smoothing(waterfall_data,new_mask,\
                                                                                                            flagprocessing,filter_seq,filter_seq_type,\
                                                                                                            wtbyfilter_fg_sigma,stats_type=stats_type_wtfilter,\
                                                                                                            interpol_type=interpol_type,gauss_sigma=gauss_sigma,gauss_size=gauss_size)
@@ -517,7 +558,7 @@ def main():
                     
                     # get the single averaged spectrum
                     #
-                    spectrum_masked          = ma.masked_array(spectrum_data,mask=new_mask,fill_value=np.nan)
+                    spectrum_masked          = ma.masked_array(waterfall_data,mask=new_mask,fill_value=np.nan)
                     #
                     intensity                = spectrum_masked.mean(axis=0)[1:] # note exclude first channel to get base 2 number of channels
                     channels                 = np.arange(len(intensity))
@@ -560,7 +601,7 @@ def main():
                     
                     # get the single averaged spectrum
                     #
-                    spectrum_masked          = ma.masked_array(spectrum_data,mask=new_mask,fill_value=np.nan)
+                    spectrum_masked          = ma.masked_array(waterfall_data,mask=new_mask,fill_value=np.nan)
                     #
                     intensity                = spectrum_masked.mean(axis=0)[1:] # note exclude first channel to get base 2 number of channels
                     channels                 = np.arange(len(intensity))
@@ -575,8 +616,6 @@ def main():
                                                                                envelop_bins=envelop_xy_bins,sigma_envelop=smooth_fg_sigma,\
                                                                                         smooth_type_envelop=envelop_xy_smooth_kernel,\
                                                                                         smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size)
-
-                    
                     #
                     smoo_fg_chan = 0
                     for i in range(len(smoo_select)):
@@ -607,7 +646,7 @@ def main():
                     
                     # get the single averaged spectrum
                     #
-                    spectrum_masked          = ma.masked_array(spectrum_data,mask=new_mask,fill_value=np.nan)
+                    spectrum_masked          = ma.masked_array(waterfall_data,mask=new_mask,fill_value=np.nan)
                     #
                     intensity                = spectrum_masked.mean(axis=0)[1:] # note exclude first channel to get base 2 number of channels
 
@@ -632,7 +671,7 @@ def main():
                 # ---------------------------------------------------------------------------------------------
                 
                 if bslf_fg_sigma > 0:
-
+                    
                     # get the setting
                     #
                     stats_type_baselinefit  = para_code_input['stats_type_flagging']['stats_type_baselinefit']
@@ -640,10 +679,13 @@ def main():
                     envelop_xy_bins               = para_code_input['smoothing']['envelop_xy_spwd']
                     envelop_xy_smooth_kernel      = para_code_input['smoothing']['envelop_xy_smooth_kernel']
                     envelop_xy_smooth_kernel_size = para_code_input['smoothing']['envelop_xy_smooth_kernel_size']
+                    #
+                    lam_factor                    = para_code_input['bsl_fit']['lam_factor']
+                    set_bslf_func                 = para_code_input['bsl_fit']['set_bslf_func']
 
                     # get the single averaged spectrum
                     #
-                    spectrum_masked          = ma.masked_array(spectrum_data,mask=new_mask,fill_value=np.nan)
+                    spectrum_masked          = ma.masked_array(waterfall_data,mask=new_mask,fill_value=np.nan)
                     #
                     intensity                = spectrum_masked.mean(axis=0)[1:] # note exclude first channel to get base 2 number of channels
                     channels                 = np.arange(len(intensity))
@@ -653,12 +695,21 @@ def main():
                     splitting_in_bins_base_2 = (np.log(len(channels)/envelop_xy_bins)/np.log(2))
 
 
-                    bslf_mask,bsl_fit_info  = RFIL.flag_spectrum_by_basline_fitting(channels,intensity.data,intensity.mask,stats_type_baselinefit,\
+                    bslf_mask,bsl_fit_info,baseline_fit_intensity  = RFIL.flag_spectrum_by_basline_fitting(channels,intensity.data,intensity.mask,stats_type_baselinefit,\
                                                                                         envelop_bins=splitting_in_bins_base_2,sigma_envelop=bslf_fg_sigma,\
                                                                                 smooth_type_envelop=envelop_xy_smooth_kernel,\
-                                                                                        smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size)
+                                                                                        smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size,set_bslf_func=set_bslf_func,lam_factor=lam_factor)
 
 
+
+                    if len(savebslfitspectrum) > 0:
+                        baseline_fit_intensity = np.insert(baseline_fit_intensity,0,0)
+                        
+                        save_bslfit_spectra_data[d.replace('timestamp','')] = {}
+                        save_bslfit_spectra_data[d.replace('timestamp','')]['baseline_fit_intensity'] = baseline_fit_intensity
+
+                    
+                    
                     # here do the flagging
                     #
                     bslf_fg_chan = 0
@@ -734,7 +785,10 @@ def main():
                                     print('\t\t with clean_pattern',clean_bins_freq[p])
                             print('\t\t flagged: ',clean_in_freq,'frequencies')
 
+                #
+                # =============================================================================================
 
+                            
 
                 # Here we store the updated new_mask                        
                 #
@@ -749,7 +803,20 @@ def main():
 
                     
                 full_new_mask[d.replace('timestamp','')]      = new_mask
+                #
+                # =============================================================================================
 
+                
+    # save the baseline fit for bandpass subtraction
+    #
+    if len(savebslfitspectrum) > 0:
+        if toutput:
+                #print('\n   === Save bslfit spectra into a numpy-z file ',savebslfitspectrum,' === \n')
+                print('\n   === Save bslfit spectra into a pickle file ',savebslfitspectrum,' === \n')
+
+        #np.savez(savebslfitspectrum,**save_bslfit_spectra_data)
+        RFIL.save_data(savebslfitspectrum,save_bslfit_spectra_data)
+        
     # determine the full fg time required 
     full_fg_elapsed_time = process_time() - full_fg_time
     if toutput:
@@ -839,8 +906,8 @@ def main():
 
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
-                freq           = obsfile[d.replace('timestamp','frequency')][:]
+                plt_waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
+                freq                = obsfile[d.replace('timestamp','frequency')][:]
 
                 if doplot_with_invert_mask:
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
@@ -853,16 +920,17 @@ def main():
                     print('\tmask:               ',d.replace('timestamp',''),' ',fg_info,' %')
                     print('\tgenerate plot for : ',d.replace('timestamp',''))
 
-                fullmask_data  = ma.masked_array(spectrum_data,mask=f_mask,fill_value=np.nan)
-                spectrum_mean  = fullmask_data.mean(axis=0)
-                spectrum_std   = fullmask_data.std(axis=0)
-
+                fullmask_data  = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
+                spectrum_mean  = fullmask_data.mean(axis=0)[:]
+                spectrum_std   = fullmask_data.std(axis=0)[:]
+                spectrum_mask  = spectrum_mean.mask[:]
 
                 # safe the spectra in dic
                 #
                 if len(savefinalspectrum) > 0:
                     plt_final_spectra_data[d.replace('timestamp','')] = {}
                     plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mean'] = spectrum_mean
+                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mask'] = spectrum_mask
                     plt_final_spectra_data[d.replace('timestamp','')]['spectrum_std']  = spectrum_std
                     plt_final_spectra_data[d.replace('timestamp','')]['freq']          = freq
                     plt_final_spectra_data[d.replace('timestamp','')]['obs_id']        = obs_id
@@ -898,7 +966,7 @@ def main():
             
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                plt_waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
 
                 if doplot_with_invert_mask:
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
@@ -915,7 +983,7 @@ def main():
 
                 # print the waterfall plot
                 #
-                fullmask_data           = ma.masked_array(spectrum_data,mask=f_mask,fill_value=np.nan)
+                fullmask_data           = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
 
                 plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'WFPLT'
                 title     = 'obsid: '+str(obs_id)+' '+d.replace('timestamp','')
@@ -941,7 +1009,7 @@ def main():
             
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                spectrum_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                plt_waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
 
                 
                 if doplot_with_invert_mask:
@@ -949,7 +1017,7 @@ def main():
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')]
 
-                fullmask_data  = ma.masked_array(spectrum_data,mask=f_mask,fill_value=np.nan)
+                fullmask_data  = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
                 spectrum_mean  = fullmask_data.mean(axis=1)[:]
 
                 if rad_dec_scan == False:
@@ -1064,21 +1132,24 @@ def new_argument_parser():
     parser.add_option('--FG_SMOOTH_SIGMA', dest='smooth_fg_sigma', type=float, default=0,
                       help='determine flags based on increase smooth kernel and thresholding on difference org smooth spectra, use also PROCESSING_TYPE see RFI_SETTINGS.json. [default = 0 is off use e.g. = 3]')
 
+    parser.add_option('--FG_SMOOTH_THRESHOLDING_SIGMA', dest='smooth_thresholding_fg_sigma', type=float, default=0,
+                      help='determine flags based on smooth thresholding spectrum (Tobi), see RFI_SETTINGS.json. [default = 0 is off use e.g. = 6]')
+
+    parser.add_option('--FG_WT_SMOOTHING_SIGMA', dest='wtbysmoothingrow_fg_sigma', type=float, default=0,
+                      help='determine flags based on smoothing and thresholding the waterfall spectrum in each time step, see RFI_SETTINGS.json. [VERY SLOW, default = 0 is off use e.g. = 6]')
+
+    parser.add_option('--FG_WT_FILTERING_SIGMA', dest='wtbyfilter_fg_sigma', type=float, default=0,
+                      help='determine flags based on filtering or smoothing and thresholding the entire waterfall spectrum, see RFI_SETTINGS.json. [VERY SLOW, default = 0 is off use e.g. = 3]')
+
     parser.add_option('--PROCESSING_TYPE', dest='flagprocessing', type=str,default='FAST',
                       help='setting how accurate/much time the flagging proceed. FAST (default), SLOW, INPUT uses the kernels of the RFI_SETTINGS.json file.')
 
-    parser.add_option('--FG_SMOOTH_THRESHOLDING_SIGMA', dest='smooth_thresholding_fg_sigma', type=float, default=0,
-                      help='determine flags based on smooth thresholding spectrum (Tobi), see RFI_SETTINGS.json. [default = 0 is off use e.g. = 10]')
+    parser.add_option('--FG_WT_BOUND_SIGMA', dest='wf_bound_fg_sigma', type=float, default=0,
+                      help='determine flags based on upper and lower boundary. [e.g. =4, Useful in combination with: --USE_BSLFIT=]')
 
     parser.add_option('--FG_BSLF_SIGMA', dest='bslf_fg_sigma', type=float, default=0,
                       help='determine flags based on spectral baseline fit. [default = 0 is off use e.g. = 10]')
 
-    parser.add_option('--FG_WT_SMOOTHING_SIGMA', dest='wtbysmoothingrow_fg_sigma', type=float, default=0,
-                      help='determine flags based on smoothing and thresholding the waterfall spectrum in each time step, see RFI_SETTINGS.json. very slow ! [default = 0 is off use e.g. = 6]')
-
-    parser.add_option('--FG_WT_FILTERING_SIGMA', dest='wtbyfilter_fg_sigma', type=float, default=0,
-                      help='determine flags based on filtering and thresholding the entire waterfall spectrum, see RFI_SETTINGS.json. very slow ! [default = 0 is off use e.g. = 3]')
-    
     parser.add_option('--FG_CLEANUP_MASK', dest='docleanup_mask',action='store_true', default=False,
                       help='Clean up the processed mask, use specific pattern and on the percentage in time and channel, see RFI_SETTINGS.json. [default = False]')
 
@@ -1118,12 +1189,17 @@ def new_argument_parser():
     parser.add_option('--SAVE_FINALSPECTRUM', dest='savefinalspectrum', type=str,default='',
                       help='Safe the final 1d spectra as numpy npz file. [works only with --DOPLOT_FINAL_SPEC]')
 
+    parser.add_option('--SAVE_BSLFIT', dest='savebslfitspectrum', type=str,default='',
+                      help='Safe the 1d baseline fit spectra as numpy npz file. [works only with --FG_BSLF_SIGMA]')
+
+    parser.add_option('--USE_BSLFIT', dest='usebslfitspectrum', type=str,default='',
+                      help='Use the 1d baseline fit spectra as bandpass numpy npz file.')
+
     parser.add_option('--SILENCE', dest='toutput', action='store_false',
                       default=True,help='Switch off all output')
 
     parser.add_option('--OBSINFO', dest='getobsinfo', action='store_true',
                       default=False,help='Show observation info stored in the file')
-
 
     parser.add_option('--HELP', dest='help', action='store_true',
                       default=False,help='Show info on input')

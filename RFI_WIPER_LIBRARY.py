@@ -1,4 +1,4 @@
-# HRK 2025
+# HRK 2026
 #
 # Hans-Rainer Kloeckner
 # hrk@mpifr-bonn.mpg.de 
@@ -18,6 +18,7 @@ from scipy.signal import convolve2d,correlate
 from scipy.interpolate import interp1d
 from scipy import stats
 import json
+import pickle
 from time import process_time
 from copy import copy
 #
@@ -119,7 +120,7 @@ def flag_spectrum_by_thresholding_with_smoothing(channel,intensity,mask,smooth_t
     return mask_select
 
 
-def flag_spectrum_by_basline_fitting(channel,intensity,mask,stats_type,envelop_bins,sigma_envelop,smooth_type_envelop,smooth_kernel_size_envelop):
+def flag_spectrum_by_basline_fitting(channel,intensity,mask,stats_type,envelop_bins,sigma_envelop,smooth_type_envelop,smooth_kernel_size_envelop,set_bslf_func=-1,lam_factor=10):
     """
     Use scipy 
     """
@@ -143,35 +144,50 @@ def flag_spectrum_by_basline_fitting(channel,intensity,mask,stats_type,envelop_b
     regular_modpoly_6 = pbsl.whittaker.iasls(interpol_intensity)[0]
     regular_modpoly_7 = pbsl.whittaker.psalsa(interpol_intensity)[0]
     #
+    lam               = len(interpol_channel) * lam_factor   # works with lam_factor 10 quite good 
+    baseline_fitter   = pbsl.Baseline(x_data=interpol_channel)
+    regular_modpoly_8 = baseline_fitter.arpls(interpol_intensity,lam=lam)[0]
+    #
     baseline_fit_info = ['whittaker.airpls','whittaker.arpls','whittaker.aspls','whittaker.derpsalsa','whittaker.drpls',
-                              'whittaker.iarpls','whittaker.iasls','whittaker.psalsa']
+                              'whittaker.iarpls','whittaker.iasls','whittaker.psalsa','arpls']
 
     baseline_fit_intensity  = np.array([regular_modpoly_0,regular_modpoly_1,regular_modpoly_2,regular_modpoly_3,regular_modpoly_4,\
-                                       regular_modpoly_5,regular_modpoly_6,regular_modpoly_7])
+                                       regular_modpoly_5,regular_modpoly_6,regular_modpoly_7,regular_modpoly_8])
 
 
     bsl_stats = []
     for bsli in range(baseline_fit_intensity.shape[0]):
         bsl_stats_data_mean, bsl_stats_data_std, bsl_stats_stats_type = STS.data_stats(interpol_intensity-baseline_fit_intensity[bsli],stats_type=stats_type)
-        bsl_stats.append(bsl_stats_data_std/bsl_stats_data_mean)
-
+        bsl_stats.append(bsl_stats_data_std) #/bsl_stats_data_mean)
+        
 
     std_mean_ratio_min = np.argmin(bsl_stats)
     std_mean_ratio_max = np.argmax(bsl_stats)
-
+    
     if std_mean_ratio_min == std_mean_ratio_min:
         std_mean_ratio_min = 3
         std_mean_ratio_max = 1
         baseline_fit_info[std_mean_ratio_min] = 'Caution has been set to: '+baseline_fit_info[std_mean_ratio_min]
-    
+
+    if set_bslf_func >= 0:
+        std_mean_ratio_min = set_bslf_func
+        std_mean_ratio_max = 1
+        baseline_fit_info[std_mean_ratio_min] = 'Caution has been set to: '+baseline_fit_info[std_mean_ratio_min]
+        
+
     # use the baseline with the minium std_mean ratio
     #
     bslf_corr_intensity         = interpol_intensity - baseline_fit_intensity[std_mean_ratio_min]
     #
-    mask_select                 = error_envelope_xy(interpol_channel,bslf_corr_intensity,mask,envelop_bins,sigma_envelop,\
-                                                                                smooth_type_envelop,smooth_kernel_size_envelop,interpol_type='extrapolate',mask_true_flag=True)
+    #mask_select                 = error_envelope_xy(interpol_channel,bslf_corr_intensity,mask,envelop_bins,sigma_envelop,\
+    #                                                                            smooth_type_envelop,smooth_kernel_size_envelop,interpol_type='extrapolate',mask_true_flag=True)
 
-    return mask_select, baseline_fit_info[std_mean_ratio_min]
+    # flag channels on std outlieres after subtracting the linear fit 
+    #
+    mask_select                 = threshold_data(data=bslf_corr_intensity,reference_data=bslf_corr_intensity,data_mask=mask,sigma=sigma_envelop,stats_type=stats_type,mask_true_flag=True)   
+
+    
+    return mask_select, baseline_fit_info[std_mean_ratio_min], baseline_fit_intensity[std_mean_ratio_min]
                                                                                 
 def detect_peaks(row, window_size, n_sigma, replace='minimum'):
     '''
@@ -417,10 +433,9 @@ def flag_waterfall_by_filtering_with_convolutional_smoothing(wtspectrum,mask,fla
         # subtracting the original with the smoothed data
         #
         if kt == 'smooth':
-            residual_data                        = interpolated_wtspectrum - convolved_interpolated_wtspectrum
+            residual_data                    = interpolated_wtspectrum - convolved_interpolated_wtspectrum
         else:
-            residual_data                        = convolved_interpolated_wtspectrum
-
+            residual_data                    = convolved_interpolated_wtspectrum
 
 
         mask_select                          = threshold_data(data=residual_data,reference_data=residual_data.flatten(),\
@@ -430,6 +445,11 @@ def flag_waterfall_by_filtering_with_convolutional_smoothing(wtspectrum,mask,fla
         mask_select = np.logical_or(mask_select_org,mask_select)
         
     return mask_select
+
+
+
+
+
 
 
 
@@ -843,3 +863,11 @@ def str_in_strlist(string,strlist):
     return isthere
 
 
+def save_data(filename,data):
+    with open(filename,'wb') as f:
+        pickle.dump(data,f,pickle.HIGHEST_PROTOCOL)
+
+def load_data(filename):
+    with open(filename,'rb') as f:
+        return pickle.load(f)
+    

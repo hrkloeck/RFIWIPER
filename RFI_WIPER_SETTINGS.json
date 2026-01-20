@@ -5,6 +5,7 @@
 	"stats_type_velocity": "madmedian",
 	"stats_type_noise": "median",
 	"sigma_noise_threshold": 9,
+	"stats_type_waterfall": "madmedian",
 	"stats_type_threshold": "madmedian",
 	"stats_type_smoothing": "madmedian",
 	"stats_type_baselinefit": "madmedian",
@@ -28,6 +29,10 @@
 	"wt_interpoltype": "Gaussian",
 	"wt_interpoltype_setting_gauss_smooth_size": 0.01,
 	"wt_interpoltype_setting_gauss_smooth_sigma": 0.005
+    },
+    "bsl_fit":{
+	"lam_factor": 10,
+	"set_bslf_func":8
     },
     "cleaning":{
 	"fraction_channel":0.7,

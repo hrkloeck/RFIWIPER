@@ -460,15 +460,6 @@ look at the output
 	generate plot for :  scan/000/P0_ND0/
 
 
-This might be a good setting!
-
-```
-python SKAMPI_RFI_WIPER.py
---DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5
---USE_SCAN="['000','001']" --USE_DATA="['P0','P1']" --FG_VELO_SIGMA=10
---FG_NOISE_SIGMA=3 --FG_WT_FILTERING_SIGMA=4 --FG_GROWTHRATE_SIGMA=3 --FG_SMOOTH_SIGMA=4 --PROCESSING_TYPE=INPUT --FG_BSLF_SIGMA=4 --FG_CLEANUP_MASK 
-```
-
 Note to make the flagging applied to the dataset you need to set --EDIT_MASK
 
 This seems to generate a reasonable clean spectrum.
@@ -481,6 +472,38 @@ width=25%>
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_FGALL.png"
 width=25%>
 
+
+This might be a good setting!
+
+```
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --USE_DATA="['P0','P1']" --FG_VELO_SIGMA=10 --FG_NOISE_SIGMA=3 --FG_GROWTHRATE_SIGMA=3 --FG_SMOOTH_SIGMA=4 --PROCESSING_TYPE=INPUT --FG_WT_FILTERING_SIGMA=4 --FG_BSLF_SIGMA=4 --FG_CLEANUP_MASK --PLOT_SPEC --FINAL_SPEC_YRANGE='[1E9,3.5E11]' --PLOT_WATERFALL --SAVE_PLOT
+```
+
+
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_GOOD.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_GOOD.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P1_ND0_SPEC_GOOD.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P1_ND0_WFPLT_GOOD.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_SPEC_GOOD.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_WFPLT_GOOD.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P1_ND0_SPEC_GOOD.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P1_ND0_WFPLT_GOOD.png"
+width=25%>
 
 
 

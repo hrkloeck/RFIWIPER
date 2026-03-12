@@ -10,6 +10,7 @@
 #
 #
 import copy
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.ticker as tck
@@ -117,20 +118,30 @@ def plot_waterfall_spectrum(data,d,title,pltsave=False,plt_fname=None):
 def plot_observation(data_x,data_y,data_c,rad_dec_scan,title,pltsave=False,plt_fname=None):
     """
     """
-
+    
     fig, ax = plt.subplots()
     plt.title(title)
 
-    sc = ax.scatter(data_x,data_y,c=data_c,alpha=0.2,norm='log',linewidths=0)
+    sc = ax.scatter(data_x,data_y,c=data_c,norm='log',linewidths=0)
     plt.colorbar(sc)
     
     if rad_dec_scan == False:
             ax.set_xlabel('azimuth [deg]')
             ax.set_ylabel('elevation [deg]')
+            x_lab = 'AZ'
+            y_lab = 'EL'
     else:
             ax.set_xlabel('right ascension  [deg]')
             ax.set_ylabel('declination [deg]')
-            
+            x_lab = 'RA'
+            y_lab = 'DEC'
+
+    max_position = '('+x_lab+', '+y_lab+')= ('+str(np.round(data_x[np.argmax(data_c)],3))+', '+str(np.round(data_y[np.argmax(data_c)],2))+')'
+
+    plt.text(data_x[np.argmax(data_c)]*1.0015,data_y[np.argmax(data_c)]*0.9995,max_position)
+
+    print(data_x[np.argmax(data_c)]*1.001,data_x[np.argmax(data_c)]*0.999)
+    
     if pltsave:
             plt_fname = filenamecounter(plt_fname,extention='.png')
             fig.savefig(plt_fname,dpi=DPI)

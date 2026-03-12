@@ -1056,7 +1056,7 @@ def main():
 
                 fullmask_data  = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
                 colouring      = fullmask_data.mean(axis=1)[:]
-
+                
                 if use_fg_velo_acce.count('PLT') > 0:
                 
                     # determine velocity and acceleration
@@ -1078,16 +1078,19 @@ def main():
                     #
                 #
                 # ====
-
                 
-                sort_it        = np.argsort(colouring)
+                data_x  = np.concatenate((data_x,az),axis=None)
+                data_y  = np.concatenate((data_y,el),axis=None)
+                data_c  = np.concatenate((data_c,colouring),axis=None)
 
-                #
-                data_x  = np.concatenate((data_x,az[sort_it][:]),axis=None)
-                data_y  = np.concatenate((data_y,el[sort_it][:]),axis=None)
-                data_c  = np.concatenate((data_c,colouring[sort_it][:]),axis=None)
-
-                
+        # For plotting need to sort
+        #
+        sort_data_c    = np.argsort(data_c)
+        #
+        data_x         = data_x[sort_data_c]
+        data_y         = data_y[sort_data_c]
+        data_c         = data_c[sort_data_c]
+        
         plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'OBS'
         #
         STP.plot_observation(data_x,data_y,data_c,rad_dec_scan,'obsid: '+str(obs_id),pltsave,plt_fname)                

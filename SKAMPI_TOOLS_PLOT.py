@@ -121,7 +121,7 @@ def plot_observation(data_x,data_y,data_c,rad_dec_scan,title,pltsave=False,plt_f
     fig, ax = plt.subplots()
     plt.title(title)
 
-    sc = ax.scatter(data_x,data_y,c=data_c,alpha=0.2,norm='log')
+    sc = ax.scatter(data_x,data_y,c=data_c,alpha=0.2,norm='log',linewidths=0)
     plt.colorbar(sc)
     
     if rad_dec_scan == False:

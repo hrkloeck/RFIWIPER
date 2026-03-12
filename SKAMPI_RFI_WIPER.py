@@ -93,6 +93,7 @@ def main():
     toutput                   = opts.toutput
     #
     velo_fg_sigma             = opts.velo_fg_sigma
+    use_fg_velo_acce          = opts.use_fg_velo_acce
     rad_dec_scan              = opts.rad_dec_scan
     getobsinfo                = opts.getobsinfo
 
@@ -344,13 +345,20 @@ def main():
                         sc_data_y = obsfile[d.replace('timestamp','elevation')][:]
                     else:
                         sc_data_x = obsfile[d.replace('timestamp','dec')][:]
-                        sc_data_y  = obsfile[d.replace('timestamp','ra')][:]
+                        sc_data_y = obsfile[d.replace('timestamp','ra')][:]
 
-                    # Determine the velocity
+
+                        
+                    # determine velocity and acceleration
                     #
-                    scan_velo_vec = np.sqrt(np.abs(np.gradient(sc_data_x)) + np.abs(np.gradient(sc_data_y)))
+                    velo_x,acce_x  = ST.generate_velo_acceleration(sc_data_x,time_data.flatten())
+                    velo_y,acce_y  = ST.generate_velo_acceleration(sc_data_y,time_data.flatten())                    
+                    #
+                    scan_velo_vec  = np.sqrt(velo_x**2 + velo_y**2)
+                    #
+                    scan_acc_vec   = np.sqrt(acce_x**2 + acce_y**2)
 
-
+                                                
                     # Here get the stats_type [default is madmedian] to determine the mean and std
                     #
                     stats_type_velocity = para_code_input['stats_type_flagging']['stats_type_velocity']
@@ -360,20 +368,38 @@ def main():
                     full_mask    = ma.masked_array(new_mask.astype(int),mask=new_mask)
                     time_mask    = np.sum(full_mask,axis=1).mask
 
-                    # determine new mask by thresholding saturation
-                    time_mask_velo = RFIL.threshold_data(data=scan_velo_vec,reference_data=scan_velo_vec,\
-                                                             data_mask=time_mask,sigma=velo_fg_sigma,stats_type=stats_type_velocity,mask_true_flag=True)
-
-
                     fg_velo = 0
-                    for i in range(len(time_mask_velo)):
-                            if time_mask_velo[i] == True:
-                                new_mask[i,:] = True
-                                fg_velo += 1 
+                    if use_fg_velo_acce.count('VELO') > 0:
+                        
+                        # determine new mask by thresholding saturation
+                        time_mask_velo = RFIL.threshold_data(data=scan_velo_vec,reference_data=scan_velo_vec,\
+                                                                data_mask=time_mask,sigma=velo_fg_sigma,stats_type=stats_type_velocity,mask_true_flag=True)
+
+                        for i in range(len(time_mask_velo)):
+                                if time_mask_velo[i] == True:
+                                    new_mask[i,:] = True
+                                    fg_velo += 1
+
+
+                    fg_acc = 0                        
+                    if use_fg_velo_acce.count('ACC') > 0:
+                        # determine new mask by thresholding saturation
+                        time_mask_acc = RFIL.threshold_data(data=scan_acc_vec,reference_data=scan_acc_vec,\
+                                                                data_mask=time_mask,sigma=velo_fg_sigma,stats_type=stats_type_velocity,mask_true_flag=True)
+
+                                
+                        for i in range(len(time_mask_acc)):
+                                if time_mask_acc[i] == True:
+                                    new_mask[i,:] = True
+                                    fg_acc += 1 
                      
                     if toutput:
-                            print('\t- Scanning velocity FG in time')
-                            print('\t\t flagged: ',fg_velo,'time steps')
+                            if fg_velo > 0:
+                                print('\t- Scanning velocity FG in time')
+                                print('\t\t flagged: ',fg_velo,'time steps')
+                            if fg_acc > 0:
+                                print('\t- Scanning acceleration FG in time')
+                                print('\t\t flagged: ',fg_acc,'time steps')
 
 
                 # ---------------------------------------------------------------------------------------------
@@ -1009,29 +1035,57 @@ def main():
             
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                plt_waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
-
-                
-                if doplot_with_invert_mask:
-                    f_mask         = np.invert(final_mask[d.replace('timestamp','')])
-                else:
-                    f_mask         = final_mask[d.replace('timestamp','')]
-
-                fullmask_data  = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
-                spectrum_mean  = fullmask_data.mean(axis=1)[:]
-
                 if rad_dec_scan == False:
                     az          = obsfile[d.replace('timestamp','azimuth')][:]
                     el          = obsfile[d.replace('timestamp','elevation')][:]
                 else:
                     az          = obsfile[d.replace('timestamp','ra')][:]
                     el          = obsfile[d.replace('timestamp','dec')][:]
+
+
+                # === Generate information for the colour coding of the plot
+
+                # use spectrum_mean power
+                #
+                plt_waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
+
+                if doplot_with_invert_mask:
+                    f_mask         = np.invert(final_mask[d.replace('timestamp','')])
+                else:
+                    f_mask         = final_mask[d.replace('timestamp','')]
+
+                fullmask_data  = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
+                colouring      = fullmask_data.mean(axis=1)[:]
+
+                if use_fg_velo_acce.count('PLT') > 0:
                 
-                sort_it        = np.argsort(spectrum_mean)
+                    # determine velocity and acceleration
+                    #
+                    time_data       = obsfile[d][:]
+
+                    velo_az,acce_az  = ST.generate_velo_acceleration(az,time_data.flatten())
+                    velo_el,acce_el  = ST.generate_velo_acceleration(el,time_data.flatten())
+                    #
+                    if use_fg_velo_acce.count('VELO') > 0:
+                        scan_velo_vec  = np.sqrt(velo_az**2 + velo_el**2)
+                        colouring      = np.array(scan_velo_vec)
+
+                    #
+                    if use_fg_velo_acce.count('ACC') > 0:
+                    
+                        scan_acc_vec   = np.sqrt(acce_az**2 + acce_el**2)
+                        colouring      = np.array(scan_acc_vec)
+                    #
+                #
+                # ====
+
                 
+                sort_it        = np.argsort(colouring)
+
+                #
                 data_x  = np.concatenate((data_x,az[sort_it][:]),axis=None)
-                data_y  =  np.concatenate((data_y,el[sort_it][:]),axis=None)
-                data_c  = np.concatenate((data_c,spectrum_mean[sort_it][:]),axis=None)
+                data_y  = np.concatenate((data_y,el[sort_it][:]),axis=None)
+                data_c  = np.concatenate((data_c,colouring[sort_it][:]),axis=None)
 
                 
         plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'OBS'
@@ -1122,6 +1176,10 @@ def new_argument_parser():
 
     parser.add_option('--FG_VELO_SIGMA', dest='velo_fg_sigma', type=float, default=0,
                       help='determine flags based on the scanning velocity outlieres on sky. [default = 0 is off use e.g. = 6]')
+    
+    parser.add_option('--USE_VELOACC', dest='use_fg_velo_acce', type=str,default='VELOACC',
+                      help='Define if velocity or acceleration should be used in FG_VELO_SIGMA. [default = VELOACC] Note \
+                      if you e.g. use PLTVELO the velocity will be plottecd in PLOT_OBS')
 
     parser.add_option('--FG_NOISE_SIGMA', dest='noise_fg_sigma', type=float, default=0,
                       help='determine flags based on the linear relation of noise and power. [default = 0 is off use e.g. = 3]')

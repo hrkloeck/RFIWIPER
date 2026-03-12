@@ -34,15 +34,13 @@ def observation_info(obsfile,timestamp_keys,spectrum_keys,use_data_fg=[],plot_ty
     for a in obsfile.attrs:
         info_dics[a] = obsfile.attrs[a]
 
-    # enlarge info
-
-    scan_keys   = MPGHD.get_obs_info(timestamp_keys,info_idx=1)
-    data_keys   = MPGHD.get_obs_info(MPGHD.get_obs_info(spectrum_keys,info_idx=2),info_idx=0,splittype='_')
-    noise_keys  = MPGHD.get_obs_info(MPGHD.get_obs_info(spectrum_keys,info_idx=2),info_idx=1,splittype='_')
+    #scan_keys   = MPGHD.get_obs_info(timestamp_keys,info_idx=1)
+    #data_keys   = MPGHD.get_obs_info(MPGHD.get_obs_info(spectrum_keys,info_idx=2),info_idx=0,splittype='_')
+    #noise_keys  = MPGHD.get_obs_info(MPGHD.get_obs_info(spectrum_keys,info_idx=2),info_idx=1,splittype='_')
 
     info_dics['SCAN']  = list(scan_keys)
-    info_dics['TYPE']  = list(data_keys)
-    info_dics['NOISE'] = list(noise_keys)
+    info_dics['TYPE']  = list(use_data_fg)
+    info_dics['NOISE'] = list(plot_type)
 
     obs_pos = [info_dics['telescope_longitude'],info_dics['telescope_latitude'],info_dics['telescope_height']]
 
@@ -51,15 +49,14 @@ def observation_info(obsfile,timestamp_keys,spectrum_keys,use_data_fg=[],plot_ty
 
     #print('\t - Data file ', data_file)
 
-    print('\n\t - General Information ')
+    print('\n - General Information ')
 
     for i in info_dics:
-        print('\t\t ',i,info_dics[i])
+        print('\t',i,info_dics[i])
 
 
     for d in timestamp_keys:
-
-
+        
         if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
 
             info_data         = d.split('/')
@@ -87,44 +84,73 @@ def observation_info(obsfile,timestamp_keys,spectrum_keys,use_data_fg=[],plot_ty
             masked_percentage = np.count_nonzero(mask_data)/np.cumprod(mask_data.shape)[-1]*100
 
 
-            # determine velocities
-            velo_dec = np.gradient(sc_data_dec)/np.gradient(time_data.flatten()) 
-            velo_ra  = np.gradient(sc_data_ra)/np.gradient(time_data.flatten())
-            velo_az  = np.gradient(sc_data_az)/np.gradient(time_data.flatten())
-            velo_el  = np.gradient(sc_data_el)/np.gradient(time_data.flatten())
+            # determine velocities and acceleration
+            #
+            velo_dec,acce_dec =  generate_velo_acceleration(sc_data_dec,time_data.flatten())
+            velo_ra,acce_ra   =  generate_velo_acceleration(sc_data_ra,time_data.flatten())
+            #
+            velo_az,acce_az =  generate_velo_acceleration(sc_data_az,time_data.flatten())
+            velo_el,acce_el =  generate_velo_acceleration(sc_data_el,time_data.flatten())
 
+            # determine statistics for velocities and acceleration
             #
             vstatstyp = 'madmedian'
-            stats_ra  = STS.data_stats(velo_ra,stats_type=vstatstyp)
-            stats_dec = STS.data_stats(velo_dec,stats_type=vstatstyp)
-            stats_az  = STS.data_stats(velo_az,stats_type=vstatstyp)
-            stats_el  = STS.data_stats(velo_el,stats_type=vstatstyp)
+            #
+            velo_stats_ra  = STS.data_stats(velo_ra,stats_type=vstatstyp)
+            velo_stats_dec = STS.data_stats(velo_dec,stats_type=vstatstyp)
+            velo_stats_az  = STS.data_stats(velo_az,stats_type=vstatstyp)
+            velo_stats_el  = STS.data_stats(velo_el,stats_type=vstatstyp)
+            #
+            acce_stats_ra  = STS.data_stats(acce_ra,stats_type=vstatstyp)
+            acce_stats_dec = STS.data_stats(acce_dec,stats_type=vstatstyp)
+            acce_stats_az  = STS.data_stats(acce_az,stats_type=vstatstyp)
+            acce_stats_el  = STS.data_stats(acce_el,stats_type=vstatstyp)
+            
 
 
-            print('\n\t - Scan Info')
-            print('\t\tscan ',info_data[1],'type ',info_data[2])
+            print('\n - Scan Info: ',info_data[1],'type ',info_data[2],'\n')
 
-            print('\t\t\t - time range:                 ', min(acu_times)[0],max(acu_times)[0])
-            print('\t\t\t - total time:                 ', max(time_data)[0]- min(time_data)[0],' [s]')
-            print('\t\t\t - percentage masked:          ', masked_percentage, '[%]')
-            print('\t\t\t - gain un-masked:             ', *stats_gain[:2], '[mean, std]')
-            print('\t\t\t - saturation un-masked:       ', *stats_satur[:2], '[units]')
-            print('\t\t\t - Azimuth [min, max, velo]:   ',min(sc_data_az),max(sc_data_az),stats_az[0], stats_az[1], '[deg, deg, deg/s, Delta deg/s]')
-            print('\t\t\t - Elevation [min, max, velo]: ',min(sc_data_el),max(sc_data_el),stats_el[0], stats_el[1], '[deg, deg, deg/s, Delta deg/s]')
-            print('\t\t\t - RA [min, max, velo]:        ',min(sc_data_ra),max(sc_data_ra),stats_ra[0], stats_ra[1], '[deg, deg, deg/s, Delta deg/s]')
-            print('\t\t\t - DEC [min, max, velo]:       ',min(sc_data_dec),max(sc_data_dec),stats_dec[0], stats_dec[1], '[deg, deg, deg/s, Delta deg/s]')
-            print('\t\t\t - RA, DEC [min | max]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))                
+            print('\t - time range:                 ', min(acu_times)[0],max(acu_times)[0])
+            print('\t - total time:                 ', max(time_data)[0]- min(time_data)[0],' [s]')
+            print('\t - percentage masked:          ', masked_percentage, '[%]')
+            print('\t - gain un-masked:             ', *stats_gain[:2], '[mean, std]')
+            print('\t - saturation un-masked:       ', *stats_satur[:2], '[units]')
+            #
+            print('\t - Azimuth [min, max]:         ',min(sc_data_az),max(sc_data_az), '[deg, deg]')
+            print('\t\t - Azimuth velo [min, max,',vstatstyp,', error]: ',min(velo_az),max(velo_az),velo_stats_az[0], velo_stats_az[1], '[deg/s, Delta deg/s]')
+            print('\t\t - Azimuth acceleration [min, max,',vstatstyp,', error]: ',min(acce_az),max(acce_az),acce_stats_az[0], acce_stats_az[1], '[deg/s^2, Delta deg/s^2]')
+            #
+            print('\t - Elevation [min, max]:         ',min(sc_data_el),max(sc_data_el), '[deg, deg]')
+            print('\t\t - Elevation velo [min, max,',vstatstyp,', error]: ',min(velo_el),max(velo_el),velo_stats_el[0], velo_stats_el[1], '[deg/s, Delta deg/s]')
+            print('\t\t - Elevation acceleration [min, max,',vstatstyp,', error]: ',min(acce_el),max(acce_el),acce_stats_el[0], acce_stats_el[1], '[deg/s^2, Delta deg/s^2]')
+            #
+            print('\t - RA [min, max]:                ',min(sc_data_ra),max(sc_data_ra), '[deg, deg]')
+            print('\t\t - RA velo [min, max,',vstatstyp,', error]: ',min(velo_ra),max(velo_ra),velo_stats_ra[0], velo_stats_ra[1], '[deg/s, Delta deg/s]')
+            print('\t\t - RA acceleration [min, max,',vstatstyp,', error]: ',min(acce_ra),max(acce_ra),acce_stats_ra[0], acce_stats_ra[1], '[deg/s^2, Delta deg/s^2]')
+            #
+            print('\t - DEC [min, max]:               ',min(sc_data_dec),max(sc_data_dec), '[deg, deg]')
+            print('\t\t - DEC velo [min, max,',vstatstyp,', error]: ',min(velo_dec),max(velo_dec),velo_stats_dec[0], velo_stats_dec[1], '[deg/s, Delta deg/s]')
+            print('\t\t - DEC acceleration [min, max,',vstatstyp,', error]: ',min(acce_dec),max(acce_dec),acce_stats_dec[0], acce_stats_dec[1], '[deg/s^2, Delta deg/s^2]')
+            #
+            print('\t - RA, DEC [min | max]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))                
 
 
             planets = ['sun    ','moon   ','jupiter']
             for p in planets:
                 planet_separation = MPGHD.source_plant_separation(sc_data_ra,sc_data_dec,p.replace(' ',''),time_data,obs_pos).flatten()
                 lowest_FOV        = MPGHD.fov_fwhm(freq[0],15,type='fov',outunit='deg')
-                print('\t\t\t - distance to ',p,'       ',min(planet_separation),', FoV ',lowest_FOV,'[deg]')
+                print('\t\t - distance to ',p,'       ',min(planet_separation),', FoV ',lowest_FOV,'[deg]')
 
 
+def generate_velo_acceleration(coordinate_data,time_data):
+    """
+    generate velocity and acceleration array from input data
+    """
 
+    velo_array         = np.gradient(coordinate_data)/np.gradient(time_data) 
+    acceleration_array = np.gradient(velo_array)/np.gradient(time_data) 
 
+    return velo_array, acceleration_array
 
 def get_json(filename,homedir=''):
     """

@@ -1050,7 +1050,7 @@ def main():
 
                 # get info 
                 #
-                scan_info       = d.split('/')[1]
+                scan_info       = d.split('/')[1] + '\n' + d.split('/')[2]
                 
                 # get the observing time
                 #

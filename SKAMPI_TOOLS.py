@@ -116,21 +116,31 @@ def observation_info(obsfile,timestamp_keys,spectrum_keys,use_data_fg=[],plot_ty
             print('\t - gain un-masked:             ', *stats_gain[:2], '[mean, std]')
             print('\t - saturation un-masked:       ', *stats_satur[:2], '[units]')
             #
+            rinf = 5 
             print('\t - Azimuth [min, max]:         ',min(sc_data_az),max(sc_data_az), '[deg, deg]')
-            print('\t\t - Azimuth velo [min, max,',vstatstyp,', error]: ',min(velo_az),max(velo_az),velo_stats_az[0], velo_stats_az[1], '[deg/s, Delta deg/s]')
-            print('\t\t - Azimuth acceleration [min, max,',vstatstyp,', error]: ',min(acce_az),max(acce_az),acce_stats_az[0], acce_stats_az[1], '[deg/s^2, Delta deg/s^2]')
+            print('\t\t - Azimuth velo [min, max,',vstatstyp,', error]: ',np.round(min(velo_az),rinf),np.round(max(velo_az),rinf),\
+                      np.round(velo_stats_az[0],rinf),np.round(velo_stats_az[1],rinf), '[deg/s, Delta deg/s]')
+            print('\t\t - Azimuth acceleration [min, max,',vstatstyp,', error]: ',np.round(min(acce_az),rinf),np.round(max(acce_az),rinf),\
+                      np.round(acce_stats_az[0],rinf),np.round(acce_stats_az[1],rinf), '[deg/s^2, Delta deg/s^2]')
             #
             print('\t - Elevation [min, max]:         ',min(sc_data_el),max(sc_data_el), '[deg, deg]')
-            print('\t\t - Elevation velo [min, max,',vstatstyp,', error]: ',min(velo_el),max(velo_el),velo_stats_el[0], velo_stats_el[1], '[deg/s, Delta deg/s]')
-            print('\t\t - Elevation acceleration [min, max,',vstatstyp,', error]: ',min(acce_el),max(acce_el),acce_stats_el[0], acce_stats_el[1], '[deg/s^2, Delta deg/s^2]')
+            print('\t\t - Elevation velo [min, max,',vstatstyp,', error]: ',np.round(min(velo_el),rinf),np.round(max(velo_el),rinf),\
+                      np.round(velo_stats_el[0],rinf),np.round(velo_stats_el[1],rinf), '[deg/s, Delta deg/s]')
+            print('\t\t - Elevation acceleration [min, max,',vstatstyp,', error]: ',np.round(min(acce_el),rinf),np.round(max(acce_el),rinf),\
+                      np.round(acce_stats_el[0],rinf),np.round(acce_stats_el[1],rinf), '[deg/s^2, Delta deg/s^2]')
             #
-            print('\t - RA [min, max]:                ',min(sc_data_ra),max(sc_data_ra), '[deg, deg]')
-            print('\t\t - RA velo [min, max,',vstatstyp,', error]: ',min(velo_ra),max(velo_ra),velo_stats_ra[0], velo_stats_ra[1], '[deg/s, Delta deg/s]')
-            print('\t\t - RA acceleration [min, max,',vstatstyp,', error]: ',min(acce_ra),max(acce_ra),acce_stats_ra[0], acce_stats_ra[1], '[deg/s^2, Delta deg/s^2]')
+            print('\t - RA [min, max]:         ',min(sc_data_ra),max(sc_data_ra), '[deg, deg]')
+            print('\t\t - RA velo [min, max,',vstatstyp,', error]: ',np.round(min(velo_ra),rinf),np.round(max(velo_ra),rinf),\
+                      np.round(velo_stats_ra[0],rinf),np.round(velo_stats_ra[1],rinf), '[deg/s, Delta deg/s]')
+            print('\t\t - RA acceleration [min, max,',vstatstyp,', error]: ',np.round(min(acce_ra),rinf),np.round(max(acce_ra),rinf),\
+                      np.round(acce_stats_ra[0],rinf),np.round(acce_stats_ra[1],rinf), '[deg/s^2, Delta deg/s^2]')
             #
-            print('\t - DEC [min, max]:               ',min(sc_data_dec),max(sc_data_dec), '[deg, deg]')
-            print('\t\t - DEC velo [min, max,',vstatstyp,', error]: ',min(velo_dec),max(velo_dec),velo_stats_dec[0], velo_stats_dec[1], '[deg/s, Delta deg/s]')
-            print('\t\t - DEC acceleration [min, max,',vstatstyp,', error]: ',min(acce_dec),max(acce_dec),acce_stats_dec[0], acce_stats_dec[1], '[deg/s^2, Delta deg/s^2]')
+            print('\t - DEC [min, max]:         ',min(sc_data_dec),max(sc_data_dec), '[deg, deg]')
+            print('\t\t - DEC velo [min, max,',vstatstyp,', error]: ',np.round(min(velo_dec),rinf),np.round(max(velo_dec),rinf),\
+                      np.round(velo_stats_dec[0],rinf),np.round(velo_stats_dec[1],rinf), '[deg/s, Delta deg/s]')
+            print('\t\t - DEC acceleration [min, max,',vstatstyp,', error]: ',np.round(min(acce_dec),rinf),np.round(max(acce_dec),rinf),\
+                      np.round(acce_stats_dec[0],rinf),np.round(acce_stats_dec[1],rinf), '[deg/s^2, Delta deg/s^2]')
+
             #
             print('\t - RA, DEC [min | max]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))                
 

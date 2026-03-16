@@ -191,10 +191,15 @@ def main():
              #
              if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
 
+                # Generate data to pass through the process (note for plotting this is doen again)
                 time_data       = obsfile[d][:]
                 #freq            = obsfile[d.replace('timestamp','frequency')][:][1:] # exclude the DC term
                 #
-                waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum']
+
+                spectrum_data         = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
+                waterfall_data        = spectrum_data / integration_time_data[:,np.newaxis]
+
                 new_mask        = np.zeros(waterfall_data.shape).astype(bool)
 
                 if len(usebslfitspectrum) > 0:
@@ -932,7 +937,10 @@ def main():
 
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                plt_waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum'] 
+                spectrum_data         = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
+                plt_waterfall_data    = spectrum_data / integration_time_data[:,np.newaxis]
+                
                 freq                = obsfile[d.replace('timestamp','frequency')][:]
 
                 if doplot_with_invert_mask:
@@ -992,8 +1000,11 @@ def main():
             
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                plt_waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                spectrum_data         = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
+                plt_waterfall_data    = spectrum_data / integration_time_data[:,np.newaxis]
 
+                
                 if doplot_with_invert_mask:
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
                 else:
@@ -1030,11 +1041,20 @@ def main():
             print('\n   === Generate obsscan plot === \n')
 
 
-        data_x, data_y,data_c = [],[],[]
+        data_x, data_y, data_c, data_t = [],[],[],[]
+        data_idx, data_info = [],[]
         for d in timestamp_keys:
             
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
+                # get info 
+                #
+                scan_info       = d.split('/')[1]
+                
+                # get the observing time
+                #
+                time_data       = obsfile[d][:].flatten()
+                
                 if rad_dec_scan == False:
                     az          = obsfile[d.replace('timestamp','azimuth')][:]
                     el          = obsfile[d.replace('timestamp','elevation')][:]
@@ -1047,53 +1067,56 @@ def main():
 
                 # use spectrum_mean power
                 #
-                plt_waterfall_data  = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                spectrum_data         = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
+                plt_waterfall_data    = spectrum_data / integration_time_data[:,np.newaxis]
 
+                
                 if doplot_with_invert_mask:
                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')]
 
+                    
                 fullmask_data  = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
                 colouring      = fullmask_data.mean(axis=1)[:]
+                colouringis    = 'POWER'
+                
                 
                 if use_fg_velo_acce.count('PLT') > 0:
                 
                     # determine velocity and acceleration
                     #
-                    time_data       = obsfile[d][:]
-
-                    velo_az,acce_az  = ST.generate_velo_acceleration(az,time_data.flatten())
-                    velo_el,acce_el  = ST.generate_velo_acceleration(el,time_data.flatten())
+                    
+                    velo_az,acce_az  = ST.generate_velo_acceleration(az,time_data)
+                    velo_el,acce_el  = ST.generate_velo_acceleration(el,time_data)
                     #
                     if use_fg_velo_acce.count('VELO') > 0:
                         scan_velo_vec  = np.sqrt(velo_az**2 + velo_el**2)
                         colouring      = np.array(scan_velo_vec)
+                        colouringis    = 'VELOCITY'
 
                     #
                     if use_fg_velo_acce.count('ACC') > 0:
-                    
                         scan_acc_vec   = np.sqrt(acce_az**2 + acce_el**2)
                         colouring      = np.array(scan_acc_vec)
-                    #
-                #
-                # ====
-                
-                data_x  = np.concatenate((data_x,az),axis=None)
-                data_y  = np.concatenate((data_y,el),axis=None)
-                data_c  = np.concatenate((data_c,colouring),axis=None)
+                        colouringis    = 'ACCELERATION'
 
-        # For plotting need to sort
-        #
-        sort_data_c    = np.argsort(data_c)
-        #
-        data_x         = data_x[sort_data_c]
-        data_y         = data_y[sort_data_c]
-        data_c         = data_c[sort_data_c]
-        
-        plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'OBS'
-        #
-        STP.plot_observation(data_x,data_y,data_c,rad_dec_scan,'obsid: '+str(obs_id),pltsave,plt_fname)                
+                data_idx.append(np.arange(len(az)))
+                data_x.append(az)
+                data_y.append(el)
+                data_c.append(colouring)
+                data_t.append(time_data)
+                data_info.append(scan_info)
+
+                
+        # scan plot
+        plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'OBS_SCAN'
+        STP.plot_observation_scan(data_x,data_y,data_c,data_info,rad_dec_scan,'obsid: '+str(obs_id),pltsave,plt_fname)
+
+        # coloring plot
+        plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'OBS_COLO'
+        STP.plot_observation_colouring(data_x,data_y,data_c,data_t,data_info,data_idx,colouringis,'obsid: '+str(obs_id),pltsave,plt_fname)
     #
     #
     # ---------------------------------------------------------------------------------------------

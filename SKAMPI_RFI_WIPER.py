@@ -978,6 +978,7 @@ def main():
                 plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC'                
                 STP.plot_spectrum(freq,spectrum_mean,spectrum_std,title,fspec_yrange,pltsave=pltsave,plt_fname=plt_fname)
 
+        
 
         if len(savefinalspectrum) > 0:
             if toutput:
@@ -1073,7 +1074,7 @@ def main():
 
                 
                 if doplot_with_invert_mask:
-                    f_mask         = np.invert(final_mask[d.replace('timestamp','')])
+                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')]
 

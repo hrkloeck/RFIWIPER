@@ -389,7 +389,7 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 ```
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FGSMOOTH_THRESHOLDING.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SMOOTH_THRESHOLDING.png"
 width=25%>
 
 
@@ -594,6 +594,7 @@ width=25%>
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P1_ND0_SPEC_GS.png"
 width=25%>
+
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_WFPLT_GS.png"
 width=25%>
@@ -609,8 +610,6 @@ width=25%>
 
 1. Some explanation to the settings file RFI_WIPER_SETTINGS.json
 
-
-This still needs to come in 2026!
 
 wt_kernels_size_INPUT
 

@@ -389,7 +389,7 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 ```
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SMOOTH_THRESHOLDING.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SP_SMOOTH_THRESHOLDING.png"
 width=25%>
 
 
@@ -557,7 +557,7 @@ width=25%>
 
 
 
-The minimal setting might be a good start!
+**The minimal setting might be a good start!**
 
 ```
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --USE_DATA="['P0','P1']" --FG_VELOACC_SIGMA=5 --FG_SP_SMOOTH_SIGMA=5 --PROCESSING_TYPE=INPUT --FG_CLEANUP_MASK --PLOT_WATERFALL --PLOT_SPEC --PLOT_OBS

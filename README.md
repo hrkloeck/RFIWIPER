@@ -53,7 +53,7 @@ Options:
   --FG_NOISE_SIGMA=NOISE_FG_SIGMA
                         determine flags based on the linear relation of noise
                         and power. [default = 0 is off use e.g. = 3]
-  --FG_GROWTHRATE_SIGMA=GROWTHRATE_FG_SIGMA
+  --FG_SP_GROWTHRATE_SIGMA=GROWTHRATE_FG_SIGMA
                         determine flags based on the growthrate function
                         outliers. [default = 0 is off use e.g. = 6]
   --FG_SP_SMOOTH_SIGMA=SMOOTH_FG_SIGMA
@@ -196,37 +196,42 @@ The file contains 3 scans: 1 dip scan, and a cross-scan that is build up
 from to two individual scans
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P1_ND1_OBS_SCAN.png" width=25%>
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001002P0ND0P1ND0_OBS_SCAN.png" width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P1_ND1_OBS_COLO.png" width=25%>
-
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001002P0ND0P1ND0_OBS_COLO.png" width=25%>
 
 Plotting only the cross-scan you can use some selection function like:
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --PLOTOBS --USE_SCAN="['000','001']"
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --PLOT_OBS --USE_DATA="['P0']" --USE_SCAN="['000','001']"
 ```
-![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P1_ND1_OBS_CROSS.png" width=25%>
 
-Plotting the waterfall spectrum of the cross-scan for one
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0_OBS_SCAN.png" width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0_OBS_COLO.png" width=25%>
+
+If you plot only a single scan you will get the following plots:
+
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_SCAN.png" width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_COLO.png" width=25%>
+
+
+
+Plotting the waterfall and averaged spectrum of scan 000 for one
 polarisation (P0) and noise diode off (ND0):
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --PLOT_WATERFALL --USE_DATA="['P0']"
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --PLOT_WATERFALL --PLOT_SPEC --USE_DATA="['P0']"
 ```
 
 ![]()<img src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT.png" width=25%>
-![]()<img src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_WFPLT.png" width=25%>
-
-Plotting the time averaged spectrum (and errors in red) of the cross-scan for one
-polarisation (P0) and noise diode off (ND0):
-
-```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --PLOT_SPEC --USE_DATA="['P0']"
-```
-
 ![]()<img src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC.png" width=25%>
-![]()<img src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_SPEC.png" width=25%>
+
+Note that the spectrum results in the mean and the std (in red) of the
+waterfall spectrum.
+
 
 
 ## Lets do some flagging 
@@ -252,21 +257,24 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 
 **Flagging in time by outlieres in amplitude (--FG_TIME_SIGMA=)**
 
-Averaging over the entire spectrum and determine outliers in time.  In case you have strong
-astronomical sources in the scan (e.g. survey scan) this time range
-could be masked out.
+Averaging over the entire spectrum and determine outliers in time.
+Careful, in case you have strong astronomical sources in the scan (e.g. survey scan) this time range
+could be masked out. This example shows exactly this BAD case.
+
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['002']" --PLOT_WATERFALL --USE_DATA="['P0']" --FG_TIME_SIGMA=2
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_TIME_SIGMA=3 --PLOT_WATERFALL --PLOT_OBS
 ```
-
-We used a small sigma to show the effect. The source and the lower
-azimuth range has been flagged in the dip scan.
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P0_ND0_WFPLT_FGTIME.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_FG_TIME.png"
 width=25%>
-
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_SCAN_FG_TIME.png
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_COLO_FG_TIME.png"
+width=25%>
 
 
 **Flagging in time by outlieres of the saturation information (--FG_SATURATION_SIGMA=)**
@@ -274,36 +282,46 @@ width=25%>
 Based on the saturation information the SKAMPI data, outlieres will be
 determine and times will be flagged. In case you have strong
 astronomical sources in the scan (e.g. survey scan) this time range
-could be masked out.
+could be masked out. Here the dip scan will be used to demonstarte
+this. Please note similar problem to delete a source of interest could happen.
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['002']" --PLOT_WATERFALL --USE_DATA="['P0']" --FG_SATURATION_SIGMA=6
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['002']" --USE_DATA="['P0']" --FG_SATURATION_SIGMA=3 --CHANGE_COORDS_TO_AZEL --PLOT_WATERFALL --PLOT_OBS
 ```
-
-Note that the weaker source has not been flagged out, however if you scan over
-Taurus  A it will be flagged, be cautious!
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P0_ND0_WFPLT_FGSATURATION.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_FG_SATURATION.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_SCAN_FG_SATURATION.png
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_COLO_FG_SATURATION.png"
 width=25%>
 
 
 
-**Flagging in time by outliers in scanning velocity (--FG_VELO_SIGMA=)**
-Based on the scanning velocity of the telescope times will be flagged
-by outliers. Note you need to know which coordinates you need to
-use. The default is right acension and declination to switch to
+
+**Flagging in time by outliers in scanning velocity (--FG_VELOACC_SIGMA=)**
+Based on the scanning velocity and acceleration the telescope times will be flagged
+by outliers. Note you need to know which coordinates if nessesary. The default is right acension and declination to switch to
 azimuth and elevation (e.g. survey scans, dip scans ) use --CHANGE_COORDS_TO_AZEL
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --USE_DATA="['P0']" --FG_VELO_SIGMA=5 --PLOT_OBS
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --USE_DATA="['P0']" --FG_VELOACC_SIGMA=5 --PLOT_OBS
 ```
 
 Here we are flagging the cross-scan 
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P1_ND1_OBS_FGVELO.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0_OBS_SCAN_FG_VELOACC.png
 width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0_OBS_COLO_FG_VELOACC.png"
+width=25%>
+
+
+
 
 
 **Flagging in frequency by outliers in the linear relation between
@@ -317,7 +335,7 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 ```
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FGNOISE.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_NOISE.png"
 width=25%>
 
 
@@ -331,7 +349,7 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 ```
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_GROWTHRATEFG.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SP_GROWTHRATE.png"
 width=25%>
 
 
@@ -347,11 +365,11 @@ increasing kernel sizes the limit can be defined by
 wt_kernel_size_limit_SEQUENCE.
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_SMOOTH_SIGMA=6 --PLOT_SPEC
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_SP_SMOOTH_SIGMA=6 --PLOT_SPEC
 ```
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FGSMOOTH.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SP_SMOOTH.png"
 width=25%>
 
 
@@ -362,7 +380,7 @@ kernel sizes. Similar the do_smooth_sigma, but the interpolation of
 the masked array an the kernels are fixed.
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_SMOOTH_THRESHOLDING_SIGMA=10 --PLOT_SPEC
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_SP_SMOOTH_THRESHOLDING_SIGMA=6 --PLOT_SPEC
 ```
 
 ![]()<img
@@ -383,11 +401,11 @@ The following baseline fit functions are used from pybaselines:
                               whittaker.iasls, whittaker.psalsa
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_BSLF_SIGMA=6 --PLOT_SPEC
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_SP_BSLF_SIGMA=6 --PLOT_SPEC
 ```
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FGBSLF.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SP_BSLF.png"
 width=25%>
 
 
@@ -403,13 +421,13 @@ may take a long time.
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_WT_SMOOTHING_SIGMA=6 --PROCESSING_TYPE=FAST --PLOT_WATERFALL
 ```
 
-Note this process took 158 seconds to complete the masking for the FAST processing
+Note this ***process took 240 seconds*** to complete the masking for the FAST processing
 type. In case you are using survey scans and the individual times differ quite a lot,
 you may want to invest the time.
 
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_WTSMOOTHING.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_FG_WT_SMOOTHING.png"
 width=25%>
 
 
@@ -424,10 +442,10 @@ RFI_SETTINGS.json file. See the smoothing filter wt settings.
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_WT_FILTERING_SIGMA=6 --PROCESSING_TYPE=FAST --PLOT_WATERFALL
 ```
 
-Note this process took 45 seconds to complete the masking.
+Note this ***process took 11 seconds*** to complete the masking.
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_WTFILTERING.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_FG_WT_FILTERING.png"
 width=25%>
 
 
@@ -455,84 +473,126 @@ that will be used in the nest step.
 
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=../../../OBSERVATION_EXAMPLES/EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_VELO_SIGMA=6 --FG_NOISE_SIGMA=3 --FG_GROWTHRATE_SIGMA=3 --FG_SMOOTH_SIGMA=4 --PROCESSING_TYPE=INPUT --PLOT_SPEC --PLOT_WATERFALL --SAVE_PLOT
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_VELOACC_SIGMA=5 --FG_NOISE_SIGMA=3 --FG_SP_GROWTHRATE_SIGMA=3 --FG_SP_SMOOTH_SIGMA=4 --PROCESSING_TYPE=INPUT --FG_CLEANUP_MASK --PLOT_SPEC --PLOT_WATERFALL --PLOT_OBS
 ```
 
 look at the output 
 
+<p>
+=== Investigate masking of the data in  EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5
 
-	
 	generate mask for :  scan/000/P0_ND0/
 
 	- Scanning velocity FG in time
-		 flagged:  48 time steps
+		 flagged:  46 time steps
+	- Scanning acceleration FG in time
+		 flagged:  89 time steps
 	- Noise-std-stats FG in channels
-		 flagged:  295 channels
+		 flagged:  326 channels
 	- FG channels on growth rate spectrum
-		 flagged:  891 channels
+		 flagged:  929 channels
 	- FG channels on smooth spectrum
-		 kernel:  mean , size  [83, 43, 11, 7, 5, 3]  Type  INPUT
+		 kernel:  mean , size  [83, 43, 11, 7, 5, 3, 500]  Type  INPUT
 			 SWPD  :  1024
 			 boundary smoothing kernel:  hamming , size  31
-		 flagged:  2672 channels
+		 flagged:  4175 channels
+	- Clean up final 2 d mask
+		 with clean_pattern [1, 0, 1]
+		 with clean_pattern [1, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 1, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 0, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+		 flagged:  114 times
+		 with clean_pattern [1, 0, 1]
+		 with clean_pattern [1, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 0, 0, 1]
+		 with clean_pattern [1, 0, 0, 0, 1, 0, 0, 0, 1]
+		 flagged:  4700 frequencies
 
-	Full masking needed  4.025533000000001  [s]
-	
-	 === Generate 1d Spectrum plot ===
+	Full masking needed  4.276774  [s]
 
-	mask:                scan/000/P0_ND0/   11  %
+   === Generate 1d Spectrum plot ===
+
+	mask:                scan/000/P0_ND0/   23  %
 	generate plot for :  scan/000/P0_ND0/
-	
-     === Generate waterfall plot ===
 
-	mask:                scan/000/P0_ND0/   11  %
+   === Generate waterfall plot ===
+
+	mask:                scan/000/P0_ND0/   23  %
 	generate plot for :  scan/000/P0_ND0/
 
-
-Note to make the flagging applied to the dataset you need to set --EDIT_MASK
-
+</p>
+	
+	
 This seems to generate a reasonable clean spectrum.
 
-
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FGALL.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_EXAMPLE.png"
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_FGALL.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_EXAMPLE.png"
 width=25%>
+	
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_SCAN_EXAMPLE.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_COLO_EXAMPLE.png"
+width=25%>
+	
+*** Note to make the flagging applied to the dataset you need to set --EDIT_MASK***
 
 
-This might be a good setting!
+
+
+The minimal setting might be a good start!
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --USE_DATA="['P0','P1']" --FG_VELO_SIGMA=10 --FG_NOISE_SIGMA=3 --FG_GROWTHRATE_SIGMA=3 --FG_SMOOTH_SIGMA=4 --PROCESSING_TYPE=INPUT --FG_WT_FILTERING_SIGMA=4 --FG_BSLF_SIGMA=4 --FG_CLEANUP_MASK --PLOT_SPEC --FINAL_SPEC_YRANGE='[1E9,3.5E11]' --PLOT_WATERFALL --SAVE_PLOT
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --USE_DATA="['P0','P1']" --FG_VELOACC_SIGMA=5 --FG_SP_SMOOTH_SIGMA=5 --PROCESSING_TYPE=INPUT --FG_CLEANUP_MASK --PLOT_WATERFALL --PLOT_SPEC --PLOT_OBS
 ```
 
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0P1ND0_OBS_SCAN_GS.png"
+width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0P1ND0_OBS_COLO_GS.png"
+width=25%>
+
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_GOOD.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_GS.png"
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_GOOD.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P1_ND0_SPEC_GS.png"
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P1_ND0_SPEC_GOOD.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_GS.png"
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P1_ND0_WFPLT_GOOD.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P1_ND0_WFPLT_GS.png"
+width=25%>
+
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_SPEC_GS.png"
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_SPEC_GOOD.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P1_ND0_SPEC_GS.png"
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_WFPLT_GOOD.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_WFPLT_GS.png"
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P1_ND0_SPEC_GOOD.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P1_ND0_WFPLT_GS.png"
 width=25%>
-![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P1_ND0_WFPLT_GOOD.png"
-width=25%>
+
+
 
 
 

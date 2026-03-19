@@ -20,7 +20,7 @@ observation. The test dataset is EDD_2023-05-19T05_42_23.848010UTC_yWRaJ.hdf5 an
 Usage: SKAMPI_RFI_WIPER.py [options]
 
 Options:
--h, --help            show this help message and exit
+  -h, --help            show this help message and exit
   --DATA_FILE=DATAFILE  DATA - HDF5 file of the Prototyp
   --USE_DATA=USEDATA    data to flag, default use all or select e.g.
                         "['P0','P1']" or "['S0']"
@@ -41,24 +41,33 @@ Options:
   --FG_SATURATION_SIGMA=SATURATION_FG_SIGMA
                         use the saturation information to flag. default = 0 is
                         off use e.g. = 3
-  --FG_VELO_SIGMA=VELO_FG_SIGMA
-                        determine flags based on the scanning velocity
-                        outlieres on sky. [default = 0 is off use e.g. = 6]
+  --FG_VELOACC_SIGMA=VELO_FG_SIGMA
+                        determine flags based on the scanning
+                        velocity/acceleration outlieres on sky. [default = 0
+                        is off use e.g. = 6]
+  --USE_VELOACC=USE_FG_VELO_ACCE
+                        Define if velocity or acceleration should be used in
+                        FG_VELO_SIGMA. [default = VELOACC] Note
+                        if you e.g. use PLTVELO the velocity will be plottecd
+                        in PLOT_OBS
   --FG_NOISE_SIGMA=NOISE_FG_SIGMA
                         determine flags based on the linear relation of noise
                         and power. [default = 0 is off use e.g. = 3]
   --FG_GROWTHRATE_SIGMA=GROWTHRATE_FG_SIGMA
                         determine flags based on the growthrate function
                         outliers. [default = 0 is off use e.g. = 6]
-  --FG_SMOOTH_SIGMA=SMOOTH_FG_SIGMA
+  --FG_SP_SMOOTH_SIGMA=SMOOTH_FG_SIGMA
                         determine flags based on increase smooth kernel and
                         thresholding on difference org smooth spectra, use
                         also PROCESSING_TYPE see RFI_SETTINGS.json. [default =
                         0 is off use e.g. = 3]
-  --FG_SMOOTH_THRESHOLDING_SIGMA=SMOOTH_THRESHOLDING_FG_SIGMA
+  --FG_SP_SMOOTH_THRESHOLDING_SIGMA=SMOOTH_THRESHOLDING_FG_SIGMA
                         determine flags based on smooth thresholding spectrum
                         (Tobi), see RFI_SETTINGS.json. [default = 0 is off use
                         e.g. = 6]
+  --FG_SP_BSLF_SIGMA=BSLF_FG_SIGMA
+                        determine flags based on spectral baseline fit.
+                        [default = 0 is off use e.g. = 10]
   --FG_WT_SMOOTHING_SIGMA=WTBYSMOOTHINGROW_FG_SIGMA
                         determine flags based on smoothing and thresholding
                         the waterfall spectrum in each time step, see
@@ -74,17 +83,19 @@ Options:
                         FAST (default), SLOW, INPUT uses the kernels of the
                         RFI_SETTINGS.json file.
   --FG_WT_BOUND_SIGMA=WF_BOUND_FG_SIGMA
-                        determine flags based on upper and lower boundary.
-                        [e.g. =4, Useful in combination with: --USE_BSLFIT=]
-  --FG_BSLF_SIGMA=BSLF_FG_SIGMA
-                        determine flags based on spectral baseline fit.
-                        [default = 0 is off use e.g. = 10]
+                        determine flags based on upper and lower threshold of
+                        the waterfall spectrum. [e.g. =4, Useful in
+                        combination with: --USE_BSLFIT=]
   --FG_CLEANUP_MASK     Clean up the processed mask, use specific pattern and
                         on the percentage in time and channel, see
                         RFI_SETTINGS.json. [default = False]
   --CHANGE_COORDS_TO_AZEL
                         Switch to Azimuth-Elevation scan type to be used for
                         velocity outlier flag and the plotting.
+  --SELECT_SOURCE=SELSOURCE
+                        Select or exclude source [1,[time_low,time_high],] in
+                        the final data e.g would exclude the time range index
+                        from 250 to 400 "[-1,[250,400]]"
   --PLOT_SPEC           Plot the mean averaged in time spectrum.
   --FINAL_SPEC_YRANGE=FSPEC_YRANGE
                         [ymin,ymax]
@@ -93,6 +104,8 @@ Options:
                         to AZEL
   --PLOT_WITH_INVERTED_MASK
                         Plot the final plots using an inverted mask
+  --PLOT_ORG_FG_DATA    Plot the original data used in flaggin [e.g. baseline
+                        subtracted]
   --SAVE_PLOT           Save the plot as png files.
   --EDIT_MASK           Replace the original mask in the file with the new
                         mask.
@@ -101,7 +114,7 @@ Options:
   --LOAD_MASK=LOADMASK  Load the mask from the numpy npz file.
   --SAVE_FINALSPECTRUM=SAVEFINALSPECTRUM
                         Safe the final 1d spectra as numpy npz file. [works
-                        only with --DOPLOT_FINAL_SPEC]
+                        only with --PLOT_SPEC]
   --SAVE_BSLFIT=SAVEBSLFITSPECTRUM
                         Safe the 1d baseline fit spectra as numpy npz file.
                         [works only with --FG_BSLF_SIGMA]
@@ -122,45 +135,58 @@ Options:
 - Get the **general information of the file/observation**
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --OBSINFO
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --OBSINFO
 ```
 
 Here is an example of the information you might get (as an example we
 show the info for scan 000 only):
 
-	- General Information
-		  FORMAT_VERSION 1
-		  OBSERVATION_EPOCH 15
-		  OBSID 31168
-		  frequency_range [1.75e+09 3.50e+09]
-		  receiver SBAND
-		  receiver_id 3
-		  sampling_rate 3500000000.0
-		  starttime 2023-08-07T15:08:04.566
-		  stoptime 2023-08-07T15:18:11.383
-		  tags []
-		  telescope SKA_MPG_PROTOTYPE_DISH
-		  telescope_height 1086.0
-		  telescope_latitude -30.71797756
-		  telescope_longitude 21.41303794
-		  SCAN ['000', '001', '002']
-		  TYPE ['P0', 'P1']
-		  NOISE ['ND0', 'ND1']
-	  - Scan Info
-		scan  000 type  P0_ND0
-			 - time range:                  2023-08-07 15:08:04.566 2023-08-07 15:09:46.264
-			 - total time:                  101.69868993759155  [s]
-			 - percentage masked:           34.28597586096404 [%]
-			 - gain un-masked:              0.7869813188782273 0.0014986986623538104 [mean, std]
-			 - saturation un-masked:        14.525602409638553 4.191493960994627 [units]
-			 - Azimuth [min, max, velo]:    148.4999709768404 151.8297019132748 0.033641740098453 0.000480926021060636 [deg, deg, deg/s, Delta deg/s]
-			 - Elevation [min, max, velo]:  26.85145412732454 27.066377414916552 -3.210189161207029e-05 0.001205802671861964 [deg, deg, deg/s, Delta deg/s]
-			 - RA [min, max, velo]:         293.4258129323272 295.9591201383342 0.022110027864230532 0.002786060194213124 [deg, deg, deg/s, Delta deg/s]
-			 - DEC [min, max, velo]:        -65.13662681914403 -62.26515522554823 -0.02894284425705449 0.0006237228120458797 [deg, deg, deg/s, Delta deg/s]
-			 - RA, DEC [min | max]:         19h33m42.19510376s -65d08m11.85654892s  |  19h43m50.1888332s -62d15m54.55881197s
-			 - distance to  sun             129.3078693486661 , FoV  1.5966162332129297 [deg]
-			 - distance to  moon            105.13112475664464 , FoV  1.5966162332129297 [deg]
-			 - distance to  jupiter         110.14781690670279 , FoV  1.5966162332129297 [deg]
+<p>
+ - General Information
+	 FORMAT_VERSION 1
+	 OBSERVATION_EPOCH 15
+	 OBSID 31168
+	 frequency_range [1.75e+09 3.50e+09]
+	 receiver SBAND
+	 receiver_id 3
+	 sampling_rate 3500000000.0
+	 starttime 2023-08-07T15:08:04.566
+	 stoptime 2023-08-07T15:18:11.383
+	 tags []
+	 telescope SKA_MPG_PROTOTYPE_DISH
+	 telescope_height 1086.0
+	 telescope_latitude -30.71797756
+	 telescope_longitude 21.41303794
+	 SCAN ['000']
+	 TYPE ['P0']
+	 NOISE ['ND0']
+
+ - Scan Info:  000 type  P0_ND0
+
+	 - time range:                  2023-08-07 15:08:04.566 2023-08-07 15:09:46.264
+	 - total time:                  101.69868993759155  [s]
+	 - percentage masked:           34.28597586096404 [%]
+	 - gain un-masked:              0.7869813188782273 0.0014986986623538104 [mean, std]
+	 - saturation un-masked:        14.525602409638553 4.191493960994627 [units]
+	 - Azimuth [min, max]:          148.4999709768404 151.8297019132748 [deg, deg]
+		 - Azimuth velo [min, max, madmedian , error]:  -0.14326 0.33887 0.03364 0.00048 [deg/s, Delta deg/s]
+		 - Azimuth acceleration [min, max, madmedian , error]:  -1.57158 1.10525 2e-05 0.00173 [deg/s^2, Delta deg/s^2]
+	 - Elevation [min, max]:          26.85145412732454 27.066377414916552 [deg, deg]
+		 - Elevation velo [min, max, madmedian , error]:  -0.2595 0.69948 -3e-05 0.00121 [deg/s, Delta deg/s]
+		 - Elevation acceleration [min, max, madmedian , error]:  -2.82393 2.2815 0.00033 0.00655 [deg/s^2, Delta deg/s^2]
+	 - RA [min, max]:          293.4258129323272 295.9591201383342 [deg, deg]
+		 - RA velo [min, max, madmedian , error]:  -1.28194 0.51192 0.02211 0.00279 [deg/s, Delta deg/s]
+		 - RA acceleration [min, max, madmedian , error]:  -4.19497 5.09559 -0.00011 0.014 [deg/s^2, Delta deg/s^2]
+	 - DEC [min, max]:          -65.13662681914403 -62.26515522554823 [deg, deg]
+		 - DEC velo [min, max, madmedian , error]:  -0.47324 0.17917 -0.02894 0.00062 [deg/s, Delta deg/s]
+		 - DEC acceleration [min, max, madmedian , error]:  -1.54349 2.08428 -0.0 0.00283 [deg/s^2, Delta deg/s^2]
+	 - RA, DEC [min | max]:         19h33m42.19510376s -65d08m11.85654892s  |  19h43m50.1888332s -62d15m54.55881197s
+		 - distance to  sun             129.3078693486661 , FoV  1.5966162332129297 [deg]
+		 - distance to  moon            105.13112475664464 , FoV  1.5966162332129297 [deg]
+		 - distance to  jupiter         110.14781690670279 , FoV 1.5966162332129297 [deg]
+
+</p>
+
 
 ```
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --PLOT_OBS --CHANGE_COORDS_TO_AZEL
@@ -170,7 +196,10 @@ The file contains 3 scans: 1 dip scan, and a cross-scan that is build up
 from to two individual scans
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P1_ND1_OBS.png" width=25%>
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P1_ND1_OBS_SCAN.png" width=25%>
+![]()<img
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P1_ND1_OBS_COLO.png" width=25%>
+
 
 Plotting only the cross-scan you can use some selection function like:
 ```

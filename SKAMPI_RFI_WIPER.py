@@ -980,6 +980,8 @@ def main():
 
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
+                # generate data
+                #
                 if dopltorgfgdata:
                     plt_waterfall_data    = waterfall_data
                 else:
@@ -987,9 +989,7 @@ def main():
                     integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
                     plt_waterfall_data    = spectrum_data / integration_time_data[:,np.newaxis]
 
-
                 freq                      = obsfile[d.replace('timestamp','frequency')][:]
-
                 data_mask                 = final_mask[d.replace('timestamp','')]
 
                 
@@ -1037,15 +1037,14 @@ def main():
                     plt_final_spectra_data['INFO']['org_file_name']                    = data_file
                     plt_final_spectra_data['INFO']['selsource']                        = selsource
                     
-
-                
-                # print the spectrum
+                # plot spectrum
                 #
                 title = 'obsid: '+str(obs_id)+' '+d.replace('timestamp','')
                 #
-                plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC'                
+                plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC'
                 STP.plot_spectrum(freq,spectrum_mean,spectrum_std,title,fspec_yrange,pltsave=pltsave,plt_fname=plt_fname)
 
+                
         if len(savefinalspectrum) > 0:
                 if savefinalspectrum.count('.hdf5') == 0:
                     savefinalspectrum = savefinalspectrum + '.hdf5'
@@ -1135,6 +1134,7 @@ def main():
 
         data_x, data_y, data_c, data_t = [],[],[],[]
         data_idx, data_info = [],[]
+        plt_info            = []
         for d in timestamp_keys:
             
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
@@ -1142,7 +1142,9 @@ def main():
                 # get info 
                 #
                 scan_info       = d.split('/')[1] + '\n' + d.split('/')[2]
-                
+                plt_info.append(d.split('/')[1])
+                plt_info.append(d.split('/')[2])
+
                 # get the observing time
                 #
                 time_data       = obsfile[d][:].flatten()
@@ -1201,13 +1203,17 @@ def main():
                 data_t.append(time_data)
                 data_info.append(scan_info)
 
-                
+
+        # generate plot string
+        p_inf = str(np.unique(plt_info))
+        p_inf = p_inf.replace('[','').replace(']','').replace(',','').replace(' ','').replace("'",'').replace('_','')
+
         # scan plot
-        plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'OBS_SCAN'
+        plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+p_inf+'_OBS_SCAN'
         STP.plot_observation_scan(data_x,data_y,data_c,data_info,rad_dec_scan,'obsid: '+str(obs_id),pltsave,plt_fname)
 
         # coloring plot
-        plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'OBS_COLO'
+        plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+p_inf+'_OBS_COLO'
         STP.plot_observation_colouring(data_x,data_y,data_c,data_t,data_info,data_idx,colouringis,'obsid: '+str(obs_id),pltsave,plt_fname)
     #
     #
@@ -1302,7 +1308,7 @@ def new_argument_parser():
     parser.add_option('--FG_NOISE_SIGMA', dest='noise_fg_sigma', type=float, default=0,
                       help='determine flags based on the linear relation of noise and power. [default = 0 is off use e.g. = 3]')
 
-    parser.add_option('--FG_GROWTHRATE_SIGMA', dest='growthrate_fg_sigma', type=float, default=0,
+    parser.add_option('--FG_SP_GROWTHRATE_SIGMA', dest='growthrate_fg_sigma', type=float, default=0,
                       help='determine flags based on the growthrate function outliers. [default = 0 is off use e.g. = 6]')
 
     parser.add_option('--FG_SP_SMOOTH_SIGMA', dest='smooth_fg_sigma', type=float, default=0,

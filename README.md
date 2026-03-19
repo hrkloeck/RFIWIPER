@@ -188,6 +188,8 @@ show the info for scan 000 only):
 </p>
 
 
+Let's do some plotting
+
 ```
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --PLOT_OBS --CHANGE_COORDS_TO_AZEL
 ```
@@ -200,7 +202,9 @@ src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001002P0ND0P1ND0_OBS_SCAN.
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001002P0ND0P1ND0_OBS_COLO.png" width=25%>
 
+
 Plotting only the cross-scan you can use some selection function like:
+
 ```
 python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --PLOT_OBS --USE_DATA="['P0']" --USE_SCAN="['000','001']"
 ```
@@ -209,6 +213,7 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0_OBS_SCAN.png" width=25%>
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0_OBS_COLO.png" width=25%>
+
 
 If you plot only a single scan you will get the following plots:
 
@@ -290,13 +295,13 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 ```
 
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_FG_SATURATION.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_002_P0_ND0_WFPLT_FG_SATURATION.png"
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_SCAN_FG_SATURATION.png
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_002P0ND0_OBS_SCAN_FG_SATURATION.png
 width=25%>
 ![]()<img
-src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000P0ND0_OBS_COLO_FG_SATURATION.png"
+src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_002P0ND0_OBS_COLO_FG_SATURATION.png"
 width=25%>
 
 
@@ -565,6 +570,7 @@ width=25%>
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_000001P0ND0P1ND0_OBS_COLO_GS.png"
 width=25%>
 
+scan 000
 
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_GS.png"
@@ -572,12 +578,15 @@ width=25%>
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P1_ND0_SPEC_GS.png"
 width=25%>
+
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_WFPLT_GS.png"
 width=25%>
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P1_ND0_WFPLT_GS.png"
 width=25%>
+
+scan 001
 
 ![]()<img
 src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P0_ND0_SPEC_GS.png"

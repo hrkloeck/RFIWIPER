@@ -12,7 +12,11 @@
 # - complete rewritten and consolidate
 #   all the functions HRK 12/2025
 # - added baseline fit and subtraction 01/26
-#
+# - changed the statistics in the envelope funcion 03/26
+#   add source selection
+#   changed savez to hdf5 for all products
+#   compute the water_fall data with integration time
+#   generate new obsplots
 #
 import h5py
 import sys
@@ -56,6 +60,7 @@ def main():
     not_use_chan_range        = opts.notusechanrange
 
     #donothavyflag             = opts.donothavyflag
+    selsource                 = opts.selsource
     
     flagprocessing            = opts.flagprocessing
     dofgbyhand                = opts.hand_fg
@@ -77,6 +82,7 @@ def main():
     doplot_final_spec         = opts.doplot_final_spec
     doplot_final_full_data    = opts.doplot_final_full_data
     doplot_with_invert_mask   = opts.invert_mask
+    dopltorgfgdata            = opts.dopltorgfgdata
     doplotobs                 = opts.doplotobs
     fspec_yrange              = opts.fspec_yrange
     pltsave                   = opts.pltsave
@@ -181,8 +187,9 @@ def main():
     #
     full_fg_time   = process_time()
     #
-    full_new_mask = {}
+    full_new_mask            = {}
     save_bslfit_spectra_data = {}
+    save_bslfit_spectra_data['INFO'] = {}
     #
     for d in timestamp_keys:
 
@@ -203,12 +210,16 @@ def main():
                 new_mask        = np.zeros(waterfall_data.shape).astype(bool)
 
                 if len(usebslfitspectrum) > 0:
+                    bslfit_file    = h5py.File(usebslfitspectrum)
+
                     if toutput:
-                        print('\n\tWill use : ',usebslfitspectrum,' for bandpass subtraction.\n')
+                        print('\n\tWill use : ',usebslfitspectrum,' for bandpass subtraction.\n')                        
+                        print('\t  Hope you are sure that the mask you import belongs to the data')
+                        print('\t  OBSID Input File ',bslfit_file['INFO'].attrs['OBSID'], 'OBSID Data', obs_id)
 
-                    bslfit_data    = RFIL.load_data(usebslfitspectrum)[d.replace('timestamp','')]['baseline_fit_intensity']
+                    bslfit_data    = bslfit_file[d.replace('timestamp','')]['baseline_fit_intensity'][:]
 
-
+                    
                     # Subtract the baseline fit of the averaged spectrum from the waterfall data
                     #
                     waterfall_data = waterfall_data - bslfit_data[np.newaxis,:]
@@ -338,7 +349,7 @@ def main():
 
                             
                 # ---------------------------------------------------------------------------------------------
-                # flagging by scan velocity use thresholds
+                # flagging by scan velocity and acceleration use thresholds
                 #
                 # (flagged times will not be used in the spectrum flagging and is present in the final mask)
                 # ---------------------------------------------------------------------------------------------
@@ -731,15 +742,25 @@ def main():
                                                                                 smooth_type_envelop=envelop_xy_smooth_kernel,\
                                                                                         smooth_kernel_size_envelop=envelop_xy_smooth_kernel_size,set_bslf_func=set_bslf_func,lam_factor=lam_factor)
 
+                                                                                        
+                    baseline_fit_intensity  = np.insert(baseline_fit_intensity,0,0)
 
-
+                    # Prepare to save baseline fits
+                    #
                     if len(savebslfitspectrum) > 0:
-                        baseline_fit_intensity = np.insert(baseline_fit_intensity,0,0)
                         
+                        # here we include the DC term in the spectrum to be consistent
+                        #
+                        freq_bslf               = obsfile[d.replace('timestamp','frequency')][:] 
+                        #
                         save_bslfit_spectra_data[d.replace('timestamp','')] = {}
                         save_bslfit_spectra_data[d.replace('timestamp','')]['baseline_fit_intensity'] = baseline_fit_intensity
+                        save_bslfit_spectra_data[d.replace('timestamp','')]['bslf_mask']              = bslf_mask
+                        save_bslfit_spectra_data[d.replace('timestamp','')]['bsl_fit_info']           = bsl_fit_info
+                        save_bslfit_spectra_data[d.replace('timestamp','')]['freq']                   = freq_bslf
+                        save_bslfit_spectra_data['INFO']['OBSID']                                     = obs_id
+                        save_bslfit_spectra_data['INFO']['org_file_name']                             = data_file
 
-                    
                     
                     # here do the flagging
                     #
@@ -776,9 +797,8 @@ def main():
                     # clean up mask of some pattern to exclude single grouping of channels
                     # can define this in the settings file
                     #
-                    clean_bins_freq = para_code_input['cleaning']['clean_bins_freq']
-                    clean_bins_time = para_code_input['cleaning']['clean_bins_time']
-
+                    clean_bins_freq = para_code_input['cleaning']['clean_bins_freq'] 
+                    clean_bins_time = para_code_input['cleaning']['clean_bins_time'] 
 
                     # Clean up in time
                     #
@@ -841,12 +861,15 @@ def main():
     # save the baseline fit for bandpass subtraction
     #
     if len(savebslfitspectrum) > 0:
-        if toutput:
-                #print('\n   === Save bslfit spectra into a numpy-z file ',savebslfitspectrum,' === \n')
-                print('\n   === Save bslfit spectra into a pickle file ',savebslfitspectrum,' === \n')
 
-        #np.savez(savebslfitspectrum,**save_bslfit_spectra_data)
-        RFIL.save_data(savebslfitspectrum,save_bslfit_spectra_data)
+        if savebslfitspectrum.count('.hdf5') == 0:
+                    savebslfitspectrum = savebslfitspectrum + '.hdf5'
+
+        if toutput:
+                print('\n   === Save bslfit spectra into a hdf5 file ',savebslfitspectrum,' === \n')
+
+        RFIL.data2hdf5(savebslfitspectrum,save_bslfit_spectra_data)
+
         
     # determine the full fg time required 
     full_fg_elapsed_time = process_time() - full_fg_time
@@ -879,6 +902,7 @@ def main():
 
         final_mask = {}
         for d in timestamp_keys:
+            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
                 final_mask[d.replace('timestamp','')] = final_maskcomb
     else:
         print('CAUTON both channels have different dimensions')
@@ -894,16 +918,30 @@ def main():
     # ---------------------------------------------------------------------------------------------
 
     if len(savemask) > 0:
+
+        if savemask.count('.hdf5') == 0:
+                    savemask = savemask + '.hdf5'
+
         if toutput:
-            print('\n   === Save the mask into a numpy-z file ',savemask,' === \n')
- 
-        full_masks = {}
-        full_masks['final_comb_mask'] = final_mask
-        full_masks['final_mask']      = full_new_mask
+            print('\n   === Save the mask into a hdf5 file ',savemask,' === \n')
+
+            
+        save_mask         = copy(final_mask)
         
-        np.savez(savemask, **full_masks)
+        save_mask['INFO'] = {}
+        save_mask['INFO']['OBSID']          = obs_id
+        save_mask['INFO']['org_file_name']  = data_file
+
+        sm_keys = final_mask.keys()
+
+        for sk in sm_keys:
+            save_mask[sk] = {}
+            save_mask[sk]['mask'] = final_mask[sk]
+        
+        RFIL.data2hdf5(savemask,save_mask)
 
 
+        
     # ---------------------------------------------------------------------------------------------
     # Load the mask
     # ---------------------------------------------------------------------------------------------
@@ -911,13 +949,17 @@ def main():
     if len(loadmask) > 0:
         if toutput:
             print('\n   === Load in mask from ',loadmask,' === \n')
+            # NEED TO DO A CHECK FOR OBSID
+            print('Hope you are sure that the mask you import belongs to the data')
+            print('\t  OBSID Input File ',load_mask['INFO'].attrs['OBSID'], 'OBSID Data', obs_id)
 
         # Load the dictionary
-        loaded_dict = np.load(loadmask+'.npz', allow_pickle=True)
+        load_mask = RFIL.hdf52dic(loadmask,'mask')
+
 
         # retrive the mask 
-        full_new_mask = loaded_dict['final_mask'].item()
-        final_mask    = loaded_dict['final_comb_mask'].item()
+        full_new_mask = load_mask
+        final_mask    = load_mask
 
 
     # ---------------------------------------------------------------------------------------------
@@ -931,22 +973,46 @@ def main():
 
         # Store the final spectra to be optional saved
         #
-        plt_final_spectra_data = {}
+        plt_final_spectra_data         = {}
+        plt_final_spectra_data['INFO'] = {}
         #
         for d in timestamp_keys:
 
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                spectrum_data         = obsfile[d.replace('timestamp','')+'spectrum'][:]
-                integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
-                plt_waterfall_data    = spectrum_data / integration_time_data[:,np.newaxis]
+                if dopltorgfgdata:
+                    plt_waterfall_data    = waterfall_data
+                else:
+                    spectrum_data         = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                    integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
+                    plt_waterfall_data    = spectrum_data / integration_time_data[:,np.newaxis]
+
+
+                freq                      = obsfile[d.replace('timestamp','frequency')][:]
+
+                data_mask                 = final_mask[d.replace('timestamp','')]
+
                 
-                freq                = obsfile[d.replace('timestamp','frequency')][:]
+                # Select or exclude source
+                #
+                if len(selsource) > 2:
+                    sel = eval(selsource)
+                    if sel[0] > 0:
+                        sel_mask = np.ones(np.shape(data_mask))
+                        sel_mask[sel[1][0]:sel[1][1],:] = 0
+                        data_mask = np.logical_or(sel_mask,data_mask)
+                    else:
+                        sel_mask = np.zeros(np.shape(data_mask))
+                        sel_mask[sel[1][0]:sel[1][1],:] = 1
+                        data_mask = np.logical_or(sel_mask,data_mask)
+
+
 
                 if doplot_with_invert_mask:
-                    f_mask         = np.invert(final_mask[d.replace('timestamp','')])
+                    f_mask         = np.invert(data_mask)
                 else:
-                    f_mask         = final_mask[d.replace('timestamp','')]
+                    f_mask         = data_mask
+
 
                 fg_info = int(100*np.sum(f_mask.astype(int))/np.prod(f_mask.shape))
                 
@@ -963,12 +1029,14 @@ def main():
                 #
                 if len(savefinalspectrum) > 0:
                     plt_final_spectra_data[d.replace('timestamp','')] = {}
-                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mean'] = spectrum_mean
+                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mean'] = spectrum_mean.data
                     plt_final_spectra_data[d.replace('timestamp','')]['spectrum_mask'] = spectrum_mask
-                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_std']  = spectrum_std
+                    plt_final_spectra_data[d.replace('timestamp','')]['spectrum_std']  = spectrum_std.data
                     plt_final_spectra_data[d.replace('timestamp','')]['freq']          = freq
-                    plt_final_spectra_data[d.replace('timestamp','')]['obs_id']        = obs_id
-                    plt_final_spectra_data[d.replace('timestamp','')]['time_data']     = time_data
+                    plt_final_spectra_data['INFO']['OBSID']                            = obs_id
+                    plt_final_spectra_data['INFO']['org_file_name']                    = data_file
+                    plt_final_spectra_data['INFO']['selsource']                        = selsource
+                    
 
                 
                 # print the spectrum
@@ -978,15 +1046,16 @@ def main():
                 plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'SPEC'                
                 STP.plot_spectrum(freq,spectrum_mean,spectrum_std,title,fspec_yrange,pltsave=pltsave,plt_fname=plt_fname)
 
-        
-
         if len(savefinalspectrum) > 0:
-            if toutput:
-                print('\n   === Save final spectra into a numpy-z file ',savefinalspectrum,' === \n')
+                if savefinalspectrum.count('.hdf5') == 0:
+                    savefinalspectrum = savefinalspectrum + '.hdf5'
+                    
+                if toutput:
+                        print('\n   === Save final spectra into a HDF5 file ',savefinalspectrum,' === \n')
 
-            np.savez(savefinalspectrum,**plt_final_spectra_data)
-
-
+                RFIL.data2hdf5(savefinalspectrum,plt_final_spectra_data)
+            
+            
     # ---------------------------------------------------------------------------------------------
     # Plot the waterfall spectrum of the data set
     # ---------------------------------------------------------------------------------------------
@@ -1001,17 +1070,37 @@ def main():
             
             if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
 
-                spectrum_data         = obsfile[d.replace('timestamp','')+'spectrum'][:]
-                integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
-                plt_waterfall_data    = spectrum_data / integration_time_data[:,np.newaxis]
+                if dopltorgfgdata:
+                    plt_waterfall_data    = waterfall_data
+                else:
+                    spectrum_data         = obsfile[d.replace('timestamp','')+'spectrum'][:]
+                    integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
+                    plt_waterfall_data    = spectrum_data / integration_time_data[:,np.newaxis]
+
+
+                data_mask                 = final_mask[d.replace('timestamp','')]
 
                 
+                # Select or exclude source
+                #
+                if len(selsource) > 2:
+                    sel = eval(selsource)
+                    if sel[0] > 0:
+                        sel_mask = np.ones(np.shape(data_mask))
+                        sel_mask[sel[1][0]:sel[1][1],:] = 0
+                        data_mask = np.logical_or(sel_mask,data_mask)
+                    else:
+                        sel_mask = np.zeros(np.shape(data_mask))
+                        sel_mask[sel[1][0]:sel[1][1],:] = 1
+                        data_mask = np.logical_or(sel_mask,data_mask)
+
+                        
                 if doplot_with_invert_mask:
-                    f_mask         = np.invert(final_mask[d.replace('timestamp','')])
+                    f_mask         = np.invert(data_mask)
                 else:
-                    f_mask         = final_mask[d.replace('timestamp','')]
+                    f_mask         = data_mask
 
-
+                    
                 fg_info = int(100*np.sum(f_mask.astype(int))/np.prod(f_mask.shape))
                 
                 if toutput:
@@ -1023,7 +1112,9 @@ def main():
                 #
                 fullmask_data           = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
 
-                plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+d.replace('timestamp','').replace('/','_')+'WFPLT'
+                plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+\
+                  '_'+d.replace('timestamp','').replace('/','_')+'WFPLT'
+                  
                 title     = 'obsid: '+str(obs_id)+' '+d.replace('timestamp','')
                 #
                 STP.plot_waterfall_spectrum(fullmask_data,d,title,pltsave=pltsave,plt_fname=plt_fname)
@@ -1201,8 +1292,8 @@ def new_argument_parser():
     parser.add_option('--FG_SATURATION_SIGMA', dest='saturation_fg_sigma', type=float,default=0,
                       help='use the saturation information to flag. default = 0 is off use e.g. = 3')
 
-    parser.add_option('--FG_VELO_SIGMA', dest='velo_fg_sigma', type=float, default=0,
-                      help='determine flags based on the scanning velocity outlieres on sky. [default = 0 is off use e.g. = 6]')
+    parser.add_option('--FG_VELOACC_SIGMA', dest='velo_fg_sigma', type=float, default=0,
+                      help='determine flags based on the scanning velocity/acceleration outlieres on sky. [default = 0 is off use e.g. = 6]')
     
     parser.add_option('--USE_VELOACC', dest='use_fg_velo_acce', type=str,default='VELOACC',
                       help='Define if velocity or acceleration should be used in FG_VELO_SIGMA. [default = VELOACC] Note \
@@ -1214,11 +1305,14 @@ def new_argument_parser():
     parser.add_option('--FG_GROWTHRATE_SIGMA', dest='growthrate_fg_sigma', type=float, default=0,
                       help='determine flags based on the growthrate function outliers. [default = 0 is off use e.g. = 6]')
 
-    parser.add_option('--FG_SMOOTH_SIGMA', dest='smooth_fg_sigma', type=float, default=0,
+    parser.add_option('--FG_SP_SMOOTH_SIGMA', dest='smooth_fg_sigma', type=float, default=0,
                       help='determine flags based on increase smooth kernel and thresholding on difference org smooth spectra, use also PROCESSING_TYPE see RFI_SETTINGS.json. [default = 0 is off use e.g. = 3]')
 
-    parser.add_option('--FG_SMOOTH_THRESHOLDING_SIGMA', dest='smooth_thresholding_fg_sigma', type=float, default=0,
+    parser.add_option('--FG_SP_SMOOTH_THRESHOLDING_SIGMA', dest='smooth_thresholding_fg_sigma', type=float, default=0,
                       help='determine flags based on smooth thresholding spectrum (Tobi), see RFI_SETTINGS.json. [default = 0 is off use e.g. = 6]')
+
+    parser.add_option('--FG_SP_BSLF_SIGMA', dest='bslf_fg_sigma', type=float, default=0,
+                      help='determine flags based on spectral baseline fit. [default = 0 is off use e.g. = 10]')
 
     parser.add_option('--FG_WT_SMOOTHING_SIGMA', dest='wtbysmoothingrow_fg_sigma', type=float, default=0,
                       help='determine flags based on smoothing and thresholding the waterfall spectrum in each time step, see RFI_SETTINGS.json. [VERY SLOW, default = 0 is off use e.g. = 6]')
@@ -1230,16 +1324,17 @@ def new_argument_parser():
                       help='setting how accurate/much time the flagging proceed. FAST (default), SLOW, INPUT uses the kernels of the RFI_SETTINGS.json file.')
 
     parser.add_option('--FG_WT_BOUND_SIGMA', dest='wf_bound_fg_sigma', type=float, default=0,
-                      help='determine flags based on upper and lower boundary. [e.g. =4, Useful in combination with: --USE_BSLFIT=]')
-
-    parser.add_option('--FG_BSLF_SIGMA', dest='bslf_fg_sigma', type=float, default=0,
-                      help='determine flags based on spectral baseline fit. [default = 0 is off use e.g. = 10]')
+                      help='determine flags based on upper and lower threshold of the waterfall spectrum. [e.g. =4, Useful in combination with: --USE_BSLFIT=]')
 
     parser.add_option('--FG_CLEANUP_MASK', dest='docleanup_mask',action='store_true', default=False,
                       help='Clean up the processed mask, use specific pattern and on the percentage in time and channel, see RFI_SETTINGS.json. [default = False]')
 
     parser.add_option('--CHANGE_COORDS_TO_AZEL', dest='rad_dec_scan', action='store_false',
                       default=True,help='Switch to Azimuth-Elevation scan type to be used for velocity outlier flag and the plotting.')
+
+    parser.add_option('--SELECT_SOURCE', dest='selsource', type=str,default='[]',
+                      help='Select or exclude source [1,[time_low,time_high],] in the final data e.g would exclude the time range index \
+                      from 250 to 400 "[-1,[250,400]]"')
 
     parser.add_option('--PLOT_SPEC', dest='doplot_final_spec', action='store_true',
                       default=False,help='Plot the mean averaged in time spectrum.')
@@ -1256,6 +1351,9 @@ def new_argument_parser():
     parser.add_option('--PLOT_WITH_INVERTED_MASK', dest='invert_mask', action='store_true',
                       default=False,help='Plot the final plots using an inverted mask')
 
+    parser.add_option('--PLOT_ORG_FG_DATA', dest='dopltorgfgdata', action='store_true',
+                      default=False,help='Plot the original data used in flaggin [e.g. baseline subtracted]')
+    
     parser.add_option('--SAVE_PLOT', dest='pltsave', action='store_true',
                       default=False,help='Save the plot as png files.')
 
@@ -1272,7 +1370,7 @@ def new_argument_parser():
                       help='Load the mask from the numpy npz file.')
 
     parser.add_option('--SAVE_FINALSPECTRUM', dest='savefinalspectrum', type=str,default='',
-                      help='Safe the final 1d spectra as numpy npz file. [works only with --DOPLOT_FINAL_SPEC]')
+                      help='Safe the final 1d spectra as numpy npz file. [works only with --PLOT_SPEC]')
 
     parser.add_option('--SAVE_BSLFIT', dest='savebslfitspectrum', type=str,default='',
                       help='Safe the 1d baseline fit spectra as numpy npz file. [works only with --FG_BSLF_SIGMA]')

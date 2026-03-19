@@ -17,13 +17,14 @@ import numpy.ma as ma
 from scipy.signal import convolve2d,correlate
 from scipy.interpolate import interp1d
 from scipy import stats
+from astropy.stats import mad_std
 import json
-import pickle
+import h5py
 from time import process_time
 from copy import copy
 #
 import RFI_WIPER_TOOLS_STATISTIC as STS
-
+import MPG_HDF5_libs as MPGHD
 
 # ===========================================================================
 #
@@ -108,11 +109,10 @@ def flag_spectrum_by_thresholding_with_smoothing(channel,intensity,mask,smooth_t
         interpol_channel, interpol_intensity = interpolate_spectrum(channel,intensity,mask_select,new_channels=None,interpol_type='extrapolate',mask_true_flag=True)
         
         smoo_amp_interpol_bslcorr            = interpol_intensity - convolve_1d_data(interpol_intensity,smooth_type=smooth_type_intensity,smooth_kernel_size=k)
-
+        
         mask_select                          = error_envelope_xy(interpol_channel,smoo_amp_interpol_bslcorr,mask_select,splitting_in_bins_base_2,sigma_envelop,\
                                                                                 smooth_type_envelop,smooth_kernel_size_envelop,interpol_type='extrapolate',\
                                                                      mask_true_flag=True,showenvelopplot=showenvelopplot)
-
         # update the mask 
         mask_select = np.logical_or(mask_select,mask_select_org)
 
@@ -638,12 +638,16 @@ def error_envelope_xy(data_x,data_y,mask,bins,sigma,smooth_type,smooth_kernel,in
     """
     new_data_x              = None
     idata_x, idata_y        = interpolate_spectrum(data_x,data_y,mask,new_data_x,interpol_type,mask_true_flag)
+
+
     
     # split data in 
     bin_data_x              = np.array_split(idata_x,2**bins)
     bin_data_y              = np.array_split(idata_y,2**bins)
     #
-    up_envelop              = sigma * np.std(bin_data_y,axis=1)
+    #up_envelop              = sigma * np.std(bin_data_y,axis=1)
+    up_envelop              = sigma * mad_std(bin_data_y,axis=1) # provides better estimates for SPWD with FG data
+    #
     smooth_envelop          = convolve_1d_data(up_envelop,smooth_type,smooth_kernel)
     #
     intepol_envelop_func    = interp1d(np.mean(bin_data_x,axis=1),smooth_envelop,fill_value=interpol_type)
@@ -870,4 +874,40 @@ def save_data(filename,data):
 def load_data(filename):
     with open(filename,'rb') as f:
         return pickle.load(f)
+
+def data2hdf5(filename,data):
+
+    h5f = h5py.File(filename,'a')
+
+    keys = data.keys()
+    for k in keys:
+
+        sub_keys = data[k].keys()
+        
+
+        h5f.create_group(k)
+        sub_keys = data[k].keys()
+        for sb in sub_keys:
+                if k != 'INFO':
+                    h5f[k].create_dataset(sb, data=data[k][sb])
+                else:
+                    h5f[k].attrs[sb] = data[k][sb]
+                                    
+    h5f.close()
+
+
+def hdf52dic(filename,kstr=''):
+
+    h5f       = h5py.File(filename,'r')
+
+    data_keys = MPGHD.findkeys(h5f,[kstr],exactmatch=True)
+
+    data_dic  = {}
+    for k in data_keys:
+        data_dic[k.replace(kstr,'')] = h5f[k][:]
+
+    h5f.close()
     
+    return data_dic
+
+                                    

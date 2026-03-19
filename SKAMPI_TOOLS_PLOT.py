@@ -77,7 +77,7 @@ def plot_spectrum(freq,spectrum,spectrum_std,title,fspec_yrange,pltsave=False,pl
     ax.set_xlabel('frequency [Hz]')
     ax.set_ylabel('mean of data [Jy]')
     ax.xaxis.set_minor_locator(tck.AutoMinorLocator())
-
+        
     anchored_text = AnchoredText('mean,std '+str('%3.2e'%plt_info_mean)+', '+str('%3.2e'%plt_info_std), loc=1)
     ax.add_artist(anchored_text)
 

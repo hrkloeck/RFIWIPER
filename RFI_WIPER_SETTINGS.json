@@ -14,8 +14,8 @@
     },
     "smoothing":{
 	"smooth_type": "mean",
-	"sp_wt_kernels_size_INPUT": [83,43,11,7,5,3],
-	"sp_wt_kernel_size_limit_SEQUENCE": 100,	
+	"sp_wt_kernels_size_INPUT": [83,43,11,7,5,3,500],
+	"sp_wt_kernel_size_limit_SEQUENCE": 1000,	
 	"envelop_xy_spwd": 1024,
 	"envelop_growthrate_spwd": 64,
 	"envelop_xy_smooth_kernel": "hamming",

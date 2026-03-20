@@ -29,6 +29,8 @@ Options:
                         default is "['ND0']"
   --USE_SCAN=USESCAN    select scan to flag, default are all scans, to choose
                         scan 000 and 001 use e.g. "['000','001']"
+  --USE_ORGMASK         use the original mask as input to the flagging
+                        process.
   --NOTUSE_CHANELRANGE=NOTUSECHANRANGE
                         exclude channel range from flagging procedure e.g.
                         '[0,2500]'

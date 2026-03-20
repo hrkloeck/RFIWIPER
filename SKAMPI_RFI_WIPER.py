@@ -58,7 +58,8 @@ def main():
     use_noise_data            = opts.usenoisedata
     use_scan                  = opts.usescan
     not_use_chan_range        = opts.notusechanrange
-
+    use_org_mask              = opts.use_org_mask
+    
     #donothavyflag             = opts.donothavyflag
     selsource                 = opts.selsource
     
@@ -196,7 +197,7 @@ def main():
              #
              # select data base on input
              #
-             if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
+             if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
 
                 # Generate data to pass through the process (note for plotting this is doen again)
                 time_data       = obsfile[d][:]
@@ -207,7 +208,10 @@ def main():
                 integration_time_data = obsfile[d.replace('timestamp','integration_time')][:].flatten()
                 waterfall_data        = spectrum_data / integration_time_data[:,np.newaxis]
 
-                new_mask        = np.zeros(waterfall_data.shape).astype(bool)
+                if use_org_mask:
+                    new_mask        = obsfile[d.replace('timestamp','')+'mask'][:]
+                else:
+                    new_mask        = np.zeros(waterfall_data.shape).astype(bool)
 
                 if len(usebslfitspectrum) > 0:
                     bslfit_file    = h5py.File(usebslfitspectrum)
@@ -902,7 +906,7 @@ def main():
 
         final_mask = {}
         for d in timestamp_keys:
-            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
+            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
                 final_mask[d.replace('timestamp','')] = final_maskcomb
     else:
         print('CAUTON both channels have different dimensions')
@@ -910,9 +914,10 @@ def main():
         
         final_mask = {}
         for d in timestamp_keys:
-            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,scan_keys):
+            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
                 final_mask[d.replace('timestamp','')] = full_new_mask[d.replace('timestamp','')]
 
+                
     # ---------------------------------------------------------------------------------------------
     # Save the mask
     # ---------------------------------------------------------------------------------------------
@@ -977,8 +982,7 @@ def main():
         plt_final_spectra_data['INFO'] = {}
         #
         for d in timestamp_keys:
-
-            if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
+            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
 
                 # generate data
                 #
@@ -1066,8 +1070,8 @@ def main():
 
         #
         for d in timestamp_keys:
-            
-            if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
+
+            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
 
                 if dopltorgfgdata:
                     plt_waterfall_data    = waterfall_data
@@ -1136,8 +1140,8 @@ def main():
         data_idx, data_info = [],[]
         plt_info            = []
         for d in timestamp_keys:
-            
-            if RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
+
+            if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
 
                 # get info 
                 #
@@ -1229,13 +1233,15 @@ def main():
         print('\nCAUTION CAUTION CAUTION FILE ',data_file,' WILL BE EDITED')
         obsfile.close()  # first close the open input file
 
+        # edit the hdf5 
         with h5py.File(data_file, 'r+') as infile:
-            for d in timestamp_keys: 
-                print('\tupdate mask: ',d.replace('timestamp',''))
-                if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
-                    infile[d.replace('timestamp','')+'mask'][:] = final_mask[d.replace('timestamp','')].astype(bool)
-        print('\n... old masks have been replaced!\n')
+            for d in timestamp_keys:
+                if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
+                        print('\tupdate mask: ',d.replace('timestamp',''))
+                        infile[d.replace('timestamp','')+'mask'][...] = final_mask[d.replace('timestamp','')].astype(bool)
+            print('\n... old masks have been replaced!\n')
         sys.exit(-1)
+        
     #
     # ---------------------------------------------------------------------------------------------
 
@@ -1250,14 +1256,10 @@ def main():
 
         with h5py.File(data_file, 'r+') as infile:
             for d in timestamp_keys: 
-
-                if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,scan_keys):
-
+                if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
                     # get the mask
                     mask_data  = infile[d.replace('timestamp','mask')][:] 
-
-                    print('\terase mask: ',d.replace('timestamp',''))
-                    infile[d.replace('timestamp','')+'mask'][:] = np.ones(mask_data.shape).astype(bool)
+                    infile[d.replace('timestamp','')+'mask'][:] = np.zeros(mask_data.shape).astype(bool)
 
         print('\n\t... masks have been erased!\n')
         sys.exit(-1)
@@ -1286,6 +1288,9 @@ def new_argument_parser():
     parser.add_option('--USE_SCAN', dest='usescan', type=str,default='',
                       help='select scan to flag, default are all scans, to choose scan 000 and 001 use e.g. \"[\'000\',\'001\']\"')
 
+    parser.add_option('--USE_ORGMASK', dest='use_org_mask', action='store_true',
+                      default=False,help='use the original mask as input to the flagging process.')
+    
     parser.add_option('--NOTUSE_CHANELRANGE', dest='notusechanrange', type=str,default='[]',
                       help='exclude channel range from flagging procedure e.g. \'[0,2500]\' ')
        
@@ -1370,19 +1375,19 @@ def new_argument_parser():
                       default=False,help='Clear the original mask in the file.')
 
     parser.add_option('--SAVE_MASK', dest='savemask',type=str,default='',
-                      help='Save the mask into numpy npz file.')
+                      help='Save the mask into hdf5 file.')
 
     parser.add_option('--LOAD_MASK', dest='loadmask', type=str,default='',
-                      help='Load the mask from the numpy npz file.')
+                      help='Load the mask from the numpy hdf5 file.')
 
     parser.add_option('--SAVE_FINALSPECTRUM', dest='savefinalspectrum', type=str,default='',
-                      help='Safe the final 1d spectra as numpy npz file. [works only with --PLOT_SPEC]')
+                      help='Safe the final 1d spectra as hdf5 file. [works only with --PLOT_SPEC]')
 
     parser.add_option('--SAVE_BSLFIT', dest='savebslfitspectrum', type=str,default='',
                       help='Safe the 1d baseline fit spectra as numpy npz file. [works only with --FG_BSLF_SIGMA]')
 
     parser.add_option('--USE_BSLFIT', dest='usebslfitspectrum', type=str,default='',
-                      help='Use the 1d baseline fit spectra as bandpass numpy npz file.')
+                      help='Use the 1d baseline fit spectra as bandpass in hdf file.')
 
     parser.add_option('--SILENCE', dest='toutput', action='store_false',
                       default=True,help='Switch off all output')

@@ -305,9 +305,9 @@ src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_002P0ND0_OBS_COLO_FG_SATURATI
 width=25%>
 
 
+**Flagging in time by outliers in scanning velocity
+(--FG_VELOACC_SIGMA=)**
 
-
-**Flagging in time by outliers in scanning velocity (--FG_VELOACC_SIGMA=)**
 Based on the scanning velocity and acceleration the telescope times will be flagged
 by outliers. Note you need to know which coordinates if nessesary. The default is right acension and declination to switch to
 azimuth and elevation (e.g. survey scans, dip scans ) use --CHANGE_COORDS_TO_AZEL
@@ -327,10 +327,9 @@ width=25%>
 
 
 
-
-
 **Flagging in frequency by outliers in the linear relation between
 noise and power (--FG_NOISE_SIGMA=)**
+
 This works on the time averaged spectrum. Assume that the system noise depends on the receiving power (single
 dish data). Perform a linear fit and check for outliers in the
 linearity.
@@ -345,12 +344,13 @@ width=25%>
 
 
 **Flagging in frequency by outliers in the growthrate function of the
-spectrum  (--FG_GROWTHRATE_SIGMA)**
+spectrum  (--FG_SP_GROWTHRATE_SIGMA)**
+
 This works on the time averaged growth rate spectrum and exclude
 outliers. 
 
 ```
-python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_GROWTHRATE_SIGMA=3 --PLOT_SPEC
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000']" --USE_DATA="['P0']" --FG_SP_GROWTHRATE_SIGMA=3 --PLOT_SPEC
 ```
 
 ![]()<img
@@ -359,7 +359,8 @@ width=25%>
 
 
 **Flagging in frequency by outliers in the difference between the
-original and smoothed spectrum  (--FG_SMOOTH_SIGMA=)**
+original and smoothed spectrum  (--FG_SP_SMOOTH_SIGMA=)**
+
 This works on the time averaged spectrum and decreasing number of
 kernel sizes. The input to that function can be adapted in the
 RFI_SETTINGS.json file. Smoothing type is by default mean, but can be
@@ -378,8 +379,10 @@ src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SP_SM
 width=25%>
 
 
+
 **Flagging in frequency by outliers in the difference between the
-original and smoothed spectrum  (--FG_SMOOTH_THRESHOLDING_SIGMA=)**
+original and smoothed spectrum  (--FG_SP_SMOOTH_THRESHOLDING_SIGMA=)**
+
 This works on the time averaged spectrum and decreasing number of
 kernel sizes. Similar the do_smooth_sigma, but the interpolation of
 the masked array an the kernels are fixed.
@@ -393,7 +396,10 @@ src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SP_SM
 width=25%>
 
 
-**Flagging in frequency by outliers applying a spectral baseline fit (--FG_BSLF_SIGMA=)**
+
+**Flagging in frequency by outliers applying a spectral baseline fit
+(--FG_SP_BSLF_SIGMA=)**
+
 Using various baseline fits by the [pybaselines package](
 https://pybaselines.readthedocs.io/en/latest/) and determine
 the minimum derivation to select the best fit and use the difference
@@ -414,10 +420,13 @@ src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_000_P0_ND0_SPEC_FG_SP_BS
 width=25%>
 
 
-**Flagging in frequency by outliers applying a spectral baseline fit (--FG_WT_SMOOTHING_SIGMA=)**
+
+**Flagging frequency by outliers, applying single smooth spectrum
+(--FG_WT_SMOOTHING_SIGMA=)**
+
 Work on the waterfall spectrum and determine flags based on smoothing and thresholding
 the waterfall spectrum in each time step, with increasing kernel
-sizes. See abow. The input to that function can be adapted in the
+sizes. Its essentially like FG_SP_SMOOTH . The input to that function can be adapted in the
 RFI_SETTINGS.json file. See the smoothing wt settings. Caution this
 may take a long time.
 
@@ -438,9 +447,11 @@ width=25%>
 
 
 
-**Flagging in frequency by outliers applying a spectral baseline fit (--FG_WT_FILTERING_SIGMA=)**
+**Flagging waterfall spectrum by outliers, applying a smooth/filter kernel
+(--FG_WT_FILTERING_SIGMA=)**
+
 Work on the waterfall spectrum and determine flags based on smoothing
-and thresholding the difference waterfall spectrum . The input to that function can be adapted in the
+and thresholding the difference waterfall spectrum. The input to that function can be adapted in the
 RFI_SETTINGS.json file. See the smoothing filter wt settings.
 
 ```
@@ -603,7 +614,22 @@ src="Plots/EDD_2023-08-07T15_07_54.890197UTC_tnEks_scan_001_P1_ND0_WFPLT_GS.png"
 width=25%>
 
 
+**Same as above, but applying the mask to the HDF5 file**
+Note you also need to flag the Noise data (since these may have
+different lengh in time flagging is performed individually. In case
+the time axis has the same dimension the FG masks will be merged into
+a single mask.
 
+```
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --USE_SCAN="['000','001']" --USE_DATA="['P0','P1']" --USE_NOISE="['ND0','ND1']" --FG_VELOACC_SIGMA=5 --FG_SP_SMOOTH_SIGMA=5 --PROCESSING_TYPE=INPUT --FG_CLEANUP_MASK --EDIT_MASK
+
+```
+
+and to check if the flagging has been applied.
+
+```
+python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.hdf5 --PLOT_WATERFALL --USE_SCAN="['000','001']" --USE_DATA="['P0']" --USE_NOISEDATA="['ND0','ND1']" --USE_ORGMASK
+```
 
 
 ## Additional information

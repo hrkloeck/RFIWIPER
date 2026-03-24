@@ -142,7 +142,7 @@ def observation_info(obsfile,timestamp_keys,spectrum_keys,use_data_fg=[],plot_ty
                       np.round(acce_stats_dec[0],rinf),np.round(acce_stats_dec[1],rinf), '[deg/s^2, Delta deg/s^2]')
 
             #
-            print('\t - RA, DEC [min | max]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))                
+            print('\t - RA, DEC [min power | max power]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))                
 
 
             planets = ['sun    ','moon   ','jupiter']

@@ -110,41 +110,41 @@ def observation_info(obsfile,timestamp_keys,spectrum_keys,use_data_fg=[],plot_ty
 
             print('\n - Scan Info: ',info_data[1],'type ',info_data[2],'\n')
 
-            print('\t - time range:                 ', min(acu_times)[0],max(acu_times)[0])
-            print('\t - total time:                 ', max(time_data)[0]- min(time_data)[0],' [s]')
-            print('\t - percentage masked:          ', masked_percentage, '[%]')
-            print('\t - gain un-masked:             ', *stats_gain[:2], '[mean, std]')
-            print('\t - saturation un-masked:       ', *stats_satur[:2], '[units]')
+            print('\t - time range:                     ', min(acu_times)[0],max(acu_times)[0])
+            print('\t - total time:                     ', max(time_data)[0]- min(time_data)[0],' [s]')
+            print('\t - percentage masked:              ', masked_percentage, '[%]')
+            print('\t - gain un-masked:                 ', *stats_gain[:2], '[mean, std]')
+            print('\t - saturation un-masked:           ', *stats_satur[:2], '[units]')
             #
             rinf = 5 
-            print('\t - Azimuth [min, max]:         ',min(sc_data_az),max(sc_data_az), '[deg, deg]')
+            print('\n\t - Azimuth [min, max]:             ',min(sc_data_az),max(sc_data_az), '[deg, deg]')
             print('\t\t - Azimuth velo [min, max,',vstatstyp,', error]: ',np.round(min(velo_az),rinf),np.round(max(velo_az),rinf),\
                       np.round(velo_stats_az[0],rinf),np.round(velo_stats_az[1],rinf), '[deg/s, Delta deg/s]')
             print('\t\t - Azimuth acceleration [min, max,',vstatstyp,', error]: ',np.round(min(acce_az),rinf),np.round(max(acce_az),rinf),\
                       np.round(acce_stats_az[0],rinf),np.round(acce_stats_az[1],rinf), '[deg/s^2, Delta deg/s^2]')
             #
-            print('\t - Elevation [min, max]:         ',min(sc_data_el),max(sc_data_el), '[deg, deg]')
+            print('\t - Elevation [min, max]:           ',min(sc_data_el),max(sc_data_el), '[deg, deg]')
             print('\t\t - Elevation velo [min, max,',vstatstyp,', error]: ',np.round(min(velo_el),rinf),np.round(max(velo_el),rinf),\
                       np.round(velo_stats_el[0],rinf),np.round(velo_stats_el[1],rinf), '[deg/s, Delta deg/s]')
             print('\t\t - Elevation acceleration [min, max,',vstatstyp,', error]: ',np.round(min(acce_el),rinf),np.round(max(acce_el),rinf),\
                       np.round(acce_stats_el[0],rinf),np.round(acce_stats_el[1],rinf), '[deg/s^2, Delta deg/s^2]')
             #
-            print('\t - RA [min, max]:         ',min(sc_data_ra),max(sc_data_ra), '[deg, deg]')
+            print('\t - RA [min, max]:                  ',min(sc_data_ra),max(sc_data_ra), '[deg, deg]')
             print('\t\t - RA velo [min, max,',vstatstyp,', error]: ',np.round(min(velo_ra),rinf),np.round(max(velo_ra),rinf),\
                       np.round(velo_stats_ra[0],rinf),np.round(velo_stats_ra[1],rinf), '[deg/s, Delta deg/s]')
             print('\t\t - RA acceleration [min, max,',vstatstyp,', error]: ',np.round(min(acce_ra),rinf),np.round(max(acce_ra),rinf),\
                       np.round(acce_stats_ra[0],rinf),np.round(acce_stats_ra[1],rinf), '[deg/s^2, Delta deg/s^2]')
             #
-            print('\t - DEC [min, max]:         ',min(sc_data_dec),max(sc_data_dec), '[deg, deg]')
+            print('\t - DEC [min, max]:                 ',min(sc_data_dec),max(sc_data_dec), '[deg, deg]')
             print('\t\t - DEC velo [min, max,',vstatstyp,', error]: ',np.round(min(velo_dec),rinf),np.round(max(velo_dec),rinf),\
                       np.round(velo_stats_dec[0],rinf),np.round(velo_stats_dec[1],rinf), '[deg/s, Delta deg/s]')
             print('\t\t - DEC acceleration [min, max,',vstatstyp,', error]: ',np.round(min(acce_dec),rinf),np.round(max(acce_dec),rinf),\
                       np.round(acce_stats_dec[0],rinf),np.round(acce_stats_dec[1],rinf), '[deg/s^2, Delta deg/s^2]')
 
             #
-            print('\t - RA, DEC [min power | max power]:        ',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))                
+            print('\n\t - RA, DEC [min power | max power]:',c_min.to_string('hmsdms'), ' | ',c_max.to_string('hmsdms'))                
 
-
+            print('\n\t - Minimum angular distance during scan time')
             planets = ['sun    ','moon   ','jupiter']
             for p in planets:
                 planet_separation = MPGHD.source_plant_separation(sc_data_ra,sc_data_dec,p.replace(' ',''),time_data,obs_pos).flatten()

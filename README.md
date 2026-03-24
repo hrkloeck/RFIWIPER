@@ -165,28 +165,31 @@ show the info for scan 000 only):
 
  - Scan Info:  000 type  P0_ND0
 
-	 - time range:                  2023-08-07 15:08:04.566 2023-08-07 15:09:46.264
-	 - total time:                  101.69868993759155  [s]
-	 - percentage masked:           34.28597586096404 [%]
-	 - gain un-masked:              0.7869813188782273 0.0014986986623538104 [mean, std]
-	 - saturation un-masked:        14.525602409638553 4.191493960994627 [units]
-	 - Azimuth [min, max]:          148.4999709768404 151.8297019132748 [deg, deg]
+	 - time range:                      2023-08-07 15:08:04.566 2023-08-07 15:09:46.264
+	 - total time:                      101.69868993759155  [s]
+	 - percentage masked:               21.74267970764606 [%]
+	 - gain un-masked:                  0.7869813188782273 0.0014986986623538104 [mean, std]
+	 - saturation un-masked:            14.525602409638553 4.191493960994627 [units]
+
+	 - Azimuth [min, max]:              148.4999709768404 151.8297019132748 [deg, deg]
 		 - Azimuth velo [min, max, madmedian , error]:  -0.14326 0.33887 0.03364 0.00048 [deg/s, Delta deg/s]
 		 - Azimuth acceleration [min, max, madmedian , error]:  -1.57158 1.10525 2e-05 0.00173 [deg/s^2, Delta deg/s^2]
-	 - Elevation [min, max]:          26.85145412732454 27.066377414916552 [deg, deg]
+	 - Elevation [min, max]:            26.85145412732454 27.066377414916552 [deg, deg]
 		 - Elevation velo [min, max, madmedian , error]:  -0.2595 0.69948 -3e-05 0.00121 [deg/s, Delta deg/s]
 		 - Elevation acceleration [min, max, madmedian , error]:  -2.82393 2.2815 0.00033 0.00655 [deg/s^2, Delta deg/s^2]
-	 - RA [min, max]:          293.4258129323272 295.9591201383342 [deg, deg]
+	 - RA [min, max]:                   293.4258129323272 295.9591201383342 [deg, deg]
 		 - RA velo [min, max, madmedian , error]:  -1.28194 0.51192 0.02211 0.00279 [deg/s, Delta deg/s]
 		 - RA acceleration [min, max, madmedian , error]:  -4.19497 5.09559 -0.00011 0.014 [deg/s^2, Delta deg/s^2]
-	 - DEC [min, max]:          -65.13662681914403 -62.26515522554823 [deg, deg]
+	 - DEC [min, max]:                  -65.13662681914403 -62.26515522554823 [deg, deg]
 		 - DEC velo [min, max, madmedian , error]:  -0.47324 0.17917 -0.02894 0.00062 [deg/s, Delta deg/s]
 		 - DEC acceleration [min, max, madmedian , error]:  -1.54349 2.08428 -0.0 0.00283 [deg/s^2, Delta deg/s^2]
-	 - RA, DEC [min | max]:         19h33m42.19510376s -65d08m11.85654892s  |  19h43m50.1888332s -62d15m54.55881197s
+
+	 - RA, DEC [min power | max power]: 19h33m42.19510376s -65d08m11.85654892s  |  19h43m50.1888332s -62d15m54.55881197s
+
+	 - Minimum angular distance during scan time
 		 - distance to  sun             129.3078693486661 , FoV  1.5966162332129297 [deg]
 		 - distance to  moon            105.13112475664464 , FoV  1.5966162332129297 [deg]
-		 - distance to  jupiter         110.14781690670279 , FoV 1.5966162332129297 [deg]
-
+		 - distance to  jupiter         110.14781690670279 , FoV  1.5966162332129297 [deg]
 ```
 
 

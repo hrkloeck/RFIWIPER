@@ -143,7 +143,7 @@ python SKAMPI_RFI_WIPER.py --DATA_FILE=EDD_2023-08-07T15_07_54.890197UTC_tnEks.h
 Here is an example of the information you might get (as an example we
 show the info for scan 000 only):
 
-<p>
+```
  - General Information
 	 FORMAT_VERSION 1
 	 OBSERVATION_EPOCH 15
@@ -187,7 +187,7 @@ show the info for scan 000 only):
 		 - distance to  moon            105.13112475664464 , FoV  1.5966162332129297 [deg]
 		 - distance to  jupiter         110.14781690670279 , FoV 1.5966162332129297 [deg]
 
-</p>
+```
 
 
 Let's do some plotting

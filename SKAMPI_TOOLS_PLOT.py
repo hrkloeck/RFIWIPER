@@ -115,7 +115,7 @@ def plot_waterfall_spectrum(data,d,title,pltsave=False,plt_fname=None):
     plt.close()
 
 
-def plot_observation_scan(data_x,data_y,data_c,data_info,rad_dec_scan,title,pltsave=False,plt_fname=None):
+def plot_observation_scan(data_x,data_y,data_c,data_m,data_info,rad_dec_scan,title,pltsave=False,plt_fname=None,mask_true_flag=True):
     """
     """
 
@@ -126,11 +126,23 @@ def plot_observation_scan(data_x,data_y,data_c,data_info,rad_dec_scan,title,plts
     data_x_s       = np.concatenate(data_x)[sort_data_c]
     data_y_s       = np.concatenate(data_y)[sort_data_c]
     data_c_s       = np.concatenate(data_c)[sort_data_c]
+    data_m_s       = np.concatenate(data_m)[sort_data_c]
+    #
+    sel_color      = data_m_s == mask_true_flag
+    #
+    data_x_s_plt     = data_x_s[sel_color]
+    data_y_s_plt     = data_y_s[sel_color]
+    data_c_s_plt     = data_c_s[sel_color]
+
 
     fig, ax = plt.subplots()
     plt.title(title)
 
-    sc = ax.scatter(data_x_s,data_y_s,c=data_c_s,norm='log',linewidths=0)
+    if np.log(np.max(data_c_s_plt)-np.min(data_c_s_plt)) > 19:
+        sc = ax.scatter(data_x_s_plt,data_y_s_plt,c=data_c_s_plt,norm='log',linewidths=0)
+    else:
+        sc = ax.scatter(data_x_s_plt,data_y_s_plt,c=data_c_s_plt,linewidths=0)
+
     plt.colorbar(sc)
     
     if rad_dec_scan == False:
@@ -146,11 +158,12 @@ def plot_observation_scan(data_x,data_y,data_c,data_info,rad_dec_scan,title,plts
 
     max_position = '('+x_lab+', '+y_lab+')= ('+str(np.round(data_x_s[np.argmax(data_c_s)],3))+', '+str(np.round(data_y_s[np.argmax(data_c_s)],2))+')'
 
-    plt.text(data_x_s[np.argmax(data_c_s)]*1.0015,data_y_s[np.argmax(data_c_s)]*0.9995,max_position)
+    plt.text(data_x_s_plt[np.argmax(data_c_s_plt)]*1.0015,data_y_s_plt[np.argmax(data_c_s_plt)]*0.9995,max_position)
 
     for sa in range(len(data_info)):
         sa_text = 'scan '+str(data_info[sa])
-        plt.text(data_x[sa][0],data_y[sa][0],sa_text)
+        sel_sc_color = data_m[sa] == mask_true_flag
+        plt.text(data_x[sa][sel_sc_color][0],data_y[sa][sel_sc_color][0],sa_text)
 
     if pltsave:
             plt_fname = filenamecounter(plt_fname,extention='.png')
@@ -161,12 +174,13 @@ def plot_observation_scan(data_x,data_y,data_c,data_info,rad_dec_scan,title,plts
     plt.close()
 
 
-def plot_observation_colouring(data_x,data_y,data_c,data_t,data_info,data_idx,colouringis,title,pltsave=False,plt_fname=None):
+def plot_observation_colouring(data_x,data_y,data_c,data_m,data_t,data_info,data_idx,colouringis,title,pltsave=False,plt_fname=None,mask_true_flag=True):
     """
     """
 
     multiple_input = len(data_x)
 
+    
     # For plotting need to sort
     #
     sort_data_c    = np.argsort(np.concatenate(data_c))
@@ -174,23 +188,31 @@ def plot_observation_colouring(data_x,data_y,data_c,data_t,data_info,data_idx,co
     data_x_s       = np.concatenate(data_x)[sort_data_c]
     data_y_s       = np.concatenate(data_y)[sort_data_c]
     data_c_s       = np.concatenate(data_c)[sort_data_c]
+    data_m_s       = np.concatenate(data_m)[sort_data_c]
     data_t_s       = np.concatenate(data_t)[sort_data_c]
     data_idx_s     = np.concatenate(data_idx)[sort_data_c]
-    
-    sel_color      = data_c_s > 0
+
+    sel_color      = data_m_s == mask_true_flag
 
     if multiple_input == 1:
         data_x_plt     = data_idx_s[sel_color]
     else:
         data_x_plt     = data_t_s[sel_color]
+                
     data_y_plt     = data_c_s[sel_color]
     data_c_plt     = data_c_s[sel_color]
     data_idx_plt   = data_idx_s[sel_color]
+
     
     fig, ax = plt.subplots()
 
-    plt.title(title)    
-    sc = ax.scatter(data_x_plt,data_y_plt,c=data_c_plt,norm='log',linewidths=0)
+    plt.title(title)
+    
+    if np.log(np.max(data_c_s)-np.min(data_c_s)) > 19:
+        sc = ax.scatter(data_x_plt,data_y_plt,c=data_c_plt,norm='log',linewidths=0)
+    else:
+        sc = ax.scatter(data_x_plt,data_y_plt,c=data_c_plt,linewidths=0)
+
     plt.colorbar(sc)
 
     ax.set_xlabel('time [UTC]')
@@ -222,11 +244,12 @@ def plot_observation_colouring(data_x,data_y,data_c,data_t,data_info,data_idx,co
         
         ax.set_xlabel('index of the time axis')
 
-        
+
     for sa in range(len(data_info)):
         sa_text = 'scan '+str(data_info[sa])
-        sel_color_sa      = data_c[sa] > 0
-        plt.text(data_t[sa][sel_color_sa][0],data_c[sa][sel_color_sa][0],sa_text)
+        sel_sc_color = data_m[sa] == mask_true_flag
+        plt.text(data_t[sa][sel_sc_color][0],data_c[sa][sel_sc_color][0],sa_text)
+
 
     if pltsave:
             plt_fname = filenamecounter(plt_fname,extention='.png')

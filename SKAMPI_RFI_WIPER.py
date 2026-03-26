@@ -132,6 +132,9 @@ def main():
     spectrum_keys        = MPGHD.findkeys(obsfile,keys=['scan','spectrum'],exactmatch=True)
     #
 
+    #print(timestamp_keys)
+    #sys.exit(-1)
+    
     if len(use_scan) == 0:
         scan_keys  = MPGHD.get_obs_info(timestamp_keys,info_idx=1)
     else:
@@ -154,7 +157,8 @@ def main():
     use_scan                  = scan_keys #RFIL.cleanup_strg_input(use_scan)
     #
     plot_type                 = use_noise_data
-    dofgbyhand                = eval(dofgbyhand)    
+    dofgbyhand                = eval(dofgbyhand)
+
     #
     # #########  
 
@@ -1136,16 +1140,20 @@ def main():
             print('\n   === Generate obsscan plot === \n')
 
 
-        data_x, data_y, data_c, data_t = [],[],[],[]
+        data_x, data_y, data_c, data_m, data_t = [],[],[],[],[]
         data_idx, data_info = [],[]
         plt_info            = []
         for d in timestamp_keys:
 
             if RFIL.str_in_strlist(d,use_data_fg) and RFIL.str_in_strlist(d,plot_type) and RFIL.str_in_strlist(d,use_noise_data) and RFIL.str_in_strlist(d,scan_keys):
 
+                if toutput:
+                    print('\tgenerate plot for : ',d.replace('timestamp',''))
+                
                 # get info 
                 #
                 scan_info       = d.split('/')[1] + '\n' + d.split('/')[2]
+
                 plt_info.append(d.split('/')[1])
                 plt_info.append(d.split('/')[2])
 
@@ -1171,15 +1179,15 @@ def main():
 
                 
                 if doplot_with_invert_mask:
-                     f_mask         = np.invert(final_mask[d.replace('timestamp','')])
+                    f_mask         = np.invert(final_mask[d.replace('timestamp','')])
                 else:
                     f_mask         = final_mask[d.replace('timestamp','')]
 
                     
                 fullmask_data  = ma.masked_array(plt_waterfall_data,mask=f_mask,fill_value=np.nan)
-                colouring      = fullmask_data.mean(axis=1)[:]
+                colouring      = fullmask_data.mean(axis=1).data
+                colouring_mask = fullmask_data.mean(axis=1).mask
                 colouringis    = 'POWER'
-                
                 
                 if use_fg_velo_acce.count('PLT') > 0:
                 
@@ -1200,10 +1208,12 @@ def main():
                         colouring      = np.array(scan_acc_vec)
                         colouringis    = 'ACCELERATION'
 
+                
                 data_idx.append(np.arange(len(az)))
                 data_x.append(az)
                 data_y.append(el)
                 data_c.append(colouring)
+                data_m.append(colouring_mask)
                 data_t.append(time_data)
                 data_info.append(scan_info)
 
@@ -1214,11 +1224,11 @@ def main():
 
         # scan plot
         plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+p_inf+'_OBS_SCAN'
-        STP.plot_observation_scan(data_x,data_y,data_c,data_info,rad_dec_scan,'obsid: '+str(obs_id),pltsave,plt_fname)
+        STP.plot_observation_scan(data_x,data_y,data_c,data_m,data_info,rad_dec_scan,'obsid: '+str(obs_id),pltsave,plt_fname,False)
 
         # coloring plot
         plt_fname = data_file.replace('..','').replace('/','').replace('.hdf5','').replace('.HDF5','')+'_'+p_inf+'_OBS_COLO'
-        STP.plot_observation_colouring(data_x,data_y,data_c,data_t,data_info,data_idx,colouringis,'obsid: '+str(obs_id),pltsave,plt_fname)
+        STP.plot_observation_colouring(data_x,data_y,data_c,data_m,data_t,data_info,data_idx,colouringis,'obsid: '+str(obs_id),pltsave,plt_fname,False)
     #
     #
     # ---------------------------------------------------------------------------------------------
@@ -1279,8 +1289,8 @@ def new_argument_parser():
     parser.add_option('--DATA_FILE', dest='datafile', type=str,
                       help='DATA - HDF5 file of the Prototyp')
 
-    parser.add_option('--USE_DATA', dest='usedata', type=str,default="[\'P0\',\'P1\',\'S0\']",
-                      help='data to flag, default use all or select e.g. \"[\'P0\',\'P1\']\" or \"[\'S0\']\"')
+    parser.add_option('--USE_DATA', dest='usedata', type=str,default="[\'P0\',\'P1\',\'C2\',\'C3\']",
+                      help='data to flag, default use all or select e.g. \"[\'P0\',\'P1\']\" or \"[\'C2\',\'C3\']\"')
 
     parser.add_option('--USE_NOISEDATA', dest='usenoisedata', type=str,default="[\'ND0\']",
                       help='use data noise diode on and off "[\'ND0\',\'ND1\']", default is \"[\'ND0\']\"')

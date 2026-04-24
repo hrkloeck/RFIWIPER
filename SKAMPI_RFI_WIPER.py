@@ -213,7 +213,7 @@ def main():
                 waterfall_data        = spectrum_data / integration_time_data[:,np.newaxis]
 
                 if use_org_mask:
-                    new_mask        = obsfile[d.replace('timestamp','')+'mask'][:]
+                    new_mask        = np.invert(obsfile[d.replace('timestamp','')+'mask'][:])
                 else:
                     new_mask        = np.zeros(waterfall_data.shape).astype(bool)
 
